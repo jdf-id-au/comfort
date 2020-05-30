@@ -10,17 +10,17 @@
 ; Files
 
 (defn ext
-  "Return function to find files of a particular type in dirname.
+  "Find files of a particular extension in dirname.
    Map basenames (modified by namer) to `File`s."
-  [{:keys [extension namer] :or {namer keyword}}]
-  (fn [dirname]
-    (into (sorted-map)
-          (for [file (.listFiles (io/file dirname))
-                :let [filename (.getName file)
-                      lcf (s/lower-case filename)]
-                :when (s/ends-with? lcf extension)
-                :let [name (namer (subs filename 0 (dec (s/last-index-of lcf extension))))]]
-            [name file]))))
+  ([extension dirname] (ext extension keyword dirname))
+  ([extension namer dirname]
+   (into (sorted-map)
+         (for [file (.listFiles (io/file dirname))
+               :let [filename (.getName file)
+                     lcf (s/lower-case filename)]
+               :when (s/ends-with? lcf extension)
+               :let [name (namer (subs filename 0 (dec (s/last-index-of lcf extension))))]]
+           [name file]))))
 
 (defn glob
   "Find files matching (possibly subdirectory-matching) glob expression.
@@ -34,6 +34,23 @@
         matcher (.getPathMatcher (FileSystems/getDefault) (str "glob:" full-pattern))
         matches (fn [file] (.matches matcher (.toPath file)))]
     (->> root-path io/file file-seq (filter matches))))
+
+; Input
+
+(defn csv-row-seq
+    "Lazy-load whole table. `namer` transforms column names.
+     Should work on file or reader. Closes reader at end."
+    ([file] (csv-row-seq file nil))
+    ([file {:keys [namer] :or {namer keyword}}]
+     (let [csvr (io/reader file)
+           [header & data] (csv/read-csv csvr)
+           fieldnames (map namer header)
+           extract (fn continue [data]
+                     (lazy-seq (if-let [row (first data)]
+                                 (cons (apply sorted-map (interleave fieldnames (map s/trim row)))
+                                       (continue (next data)))
+                                 (do (.close csvr) nil))))]
+       (extract data))))
 
 ; Output
 
