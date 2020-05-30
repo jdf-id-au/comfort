@@ -40,8 +40,8 @@
 (defn csv-row-seq
     "Lazy-load whole table. `namer` transforms column names.
      Should work on file or reader. Closes reader at end."
-    ([file] (csv-row-seq file nil))
-    ([file {:keys [namer] :or {namer keyword}}]
+    ([file] (csv-row-seq file keyword))
+    ([file namer]
      (let [csvr (io/reader file)
            [header & data] (csv/read-csv csvr)
            fieldnames (map namer header)
@@ -76,13 +76,6 @@
   [file content]
   (no-overwrite file (fn [path] (spit path (with-out-str (pprint-with-meta content))))))
 
-(defn data-fn
-  "Allow string keys to work like keyword keys do on maps."
-  [columns]
-  (let [kws? (every? keyword? columns)]
-    (apply juxt (if kws? columns ; explicit but redundant
-                         (map (fn [col] (fn [row] (get row col))) columns)))))
-
 (defn rows->csv
   "Save list of (similarly-keyed) maps to filename.csv. Not every keyword has to be in every map."
   [file rows]
@@ -91,7 +84,8 @@
         kws? (every? keyword? columns)
         headers (if kws? (map name columns) columns)]
     (with-open [writer (io/writer file)]
-      (csv/write-csv writer (concat [headers] (map (data-fn columns) rows))))))
+      (csv/write-csv writer
+        (concat [headers] (for [row rows] (for [col columns] (get row col))))))))
 
 (defn safe-csv "Save list of like-keyed maps to filename.csv unless it exists."
   [file rows] (no-overwrite file (fn [path] (rows->csv path rows))))
