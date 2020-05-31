@@ -10,16 +10,18 @@
 ; Files
 
 (defn ext
-  "Find files of a particular extension in dirname.
-   Map basenames (modified by namer) to `File`s."
+  "Find files of a particular extension (omit period) in dirname.
+   Case insensitive. No guarantee which file wins if only differ by case!
+   Map basenames (modified by namer, default `keyword`) to `File`s.
+   e.g. (ext \"csv\" \"path/to/dir\")"
   ([extension dirname] (ext extension keyword dirname))
   ([extension namer dirname]
    (into (sorted-map)
          (for [file (.listFiles (io/file dirname))
-               :let [filename (.getName file)
-                     lcf (s/lower-case filename)]
-               :when (s/ends-with? lcf extension)
-               :let [name (namer (subs filename 0 (dec (s/last-index-of lcf extension))))]]
+               :let [filename (s/lower-case (.getName file))
+                     extension (s/lower-case (str \. extension))]
+               :when (s/ends-with? filename extension)
+               :let [name (namer (subs filename 0 (s/last-index-of filename extension)))]]
            [name file]))))
 
 (defn glob
@@ -75,6 +77,11 @@
   "Pretty print content (including metadata) to file unless file exists."
   [file content]
   (no-overwrite file (fn [path] (spit path (with-out-str (pprint-with-meta content))))))
+
+(defn safe-spit
+  "Pretty print string to file unless file exists."
+  [file content]
+  (no-overwrite file (fn [path] (spit path content))))
 
 (defn rows->csv
   "Save list of (similarly-keyed) maps to filename.csv. Not every keyword has to be in every map."
