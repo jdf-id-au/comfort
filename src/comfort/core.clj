@@ -99,20 +99,26 @@
 
 ; Profiling
 
-(defn mem-report []
-  (let [display (fn [bytes name] (format (str name ": %.2f GiB") (/ bytes 1024 1024 1024.)))
-        rt (.. Runtime getRuntime)
-        free (.freeMemory rt)
-        total (.totalMemory rt)
-        max (.maxMemory rt)
-        used (- total free)]
-    (apply str
-      (interpose ", "
-        (for [[bytes name] [[used "used"]
-                            [free "free"]
-                            [total "total"]
-                            [max "max"]]]
-          (display bytes name))))))
+(defn mem-report
+  ([] (mem-report :M))
+  ([unit]
+   (let [units {:K ["KiB" (* 1024.)]
+                :M ["MiB" (* 1024. 1024)]
+                :G ["GiB" (* 1024. 1024 1024)]}
+         [suffix divisor] (units unit)
+         display (fn [bytes name] (format (str name ": %.2f " suffix) (/ bytes divisor)))
+         rt (.. Runtime getRuntime)
+         free (.freeMemory rt)
+         total (.totalMemory rt)
+         max (.maxMemory rt)
+         used (- total free)]
+     (apply str
+       (interpose ", "
+         (for [[bytes name] [[used "used"]
+                             [free "free"]
+                             [total "total"]
+                             [max "max"]]]
+           (display bytes name)))))))
 
 (defn gc "Collect garbage." []
   (.. Runtime getRuntime gc))
