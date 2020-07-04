@@ -83,18 +83,22 @@
   [file content]
   (no-overwrite file (fn [path] (spit path content))))
 
-(defn rows->csv
-  "Save list of (similarly-keyed) maps to filename.csv. Not every keyword has to be in every map."
-  [file rows]
-  {:pre [(s/ends-with? file ".csv")]}
-  (let [columns (->> rows (map keys) (apply concat) set sort)
+(defn write-csv-rows
+  "Write list of (similarly-keyed) maps to writer. Not every keyword has to be in every map."
+  [writer rows]
+  (let [columns (->> rows (mapcat keys) set sort)
         kws? (every? keyword? columns)
         headers (if kws? (map name columns) columns)]
-    (with-open [writer (io/writer file)]
-      (csv/write-csv writer
-        (concat [headers] (for [row rows] (for [col columns] (get row col))))))))
+    (csv/write-csv writer
+      (concat [headers] (for [row rows] (for [col columns] (get row col)))))))
 
-(defn safe-csv "Save list of like-keyed maps to filename.csv unless it exists."
+(defn rows->csv
+  [file rows]
+  {:pre [(s/ends-with? file ".csv")]}
+  (with-open [writer (io/writer file)]
+    (write-csv-rows writer rows)))
+
+(defn safe-csv "Save list of similarly-keyed maps to filename.csv unless it exists."
   [file rows] (no-overwrite file (fn [path] (rows->csv path rows))))
 
 ; Profiling
