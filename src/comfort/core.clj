@@ -101,6 +101,18 @@
 (defn safe-csv "Save list of similarly-keyed maps to filename.csv unless it exists."
   [file rows] (no-overwrite file (fn [path] (rows->csv path rows))))
 
+; REPL
+
+(defn make-help
+  "Show selected vars exported from given ns or alias, and their docs."
+  ; clojure.repl doesn't quite have this; bit like dir-fn
+  [m]
+  (pprint/print-table
+    (for [[ns vars] m
+          [sym var] (select-keys (ns-publics (the-ns (get (ns-aliases *ns*) ns ns))) vars)
+          :when (not= "help" (name sym))]
+      {"ns" ns "sym" sym "doc" (-> var meta :doc)})))
+
 ; Profiling
 
 (defn mem-report
