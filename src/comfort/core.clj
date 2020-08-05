@@ -110,10 +110,11 @@
   (print-table
     (for [[ns vars] m
           :let [actual-ns (the-ns (get (ns-aliases *ns*) ns ns))]
-          [sym var] (select-keys (ns-publics actual-ns) vars)
-          :when (not= "help" (name sym))]
+          [sym var] (map #(vector % (get (ns-publics actual-ns) %)) vars)
+          :when (not= "help" (name sym))
+          :let [{:keys [doc arglists]} (meta var)]]
       {"ns" (if (= actual-ns *ns*) "" ns)
-       "sym" sym "doc" (-> var meta :doc)})))
+       "sym" sym "args" arglists "doc" doc})))
 
 ; Profiling
 
