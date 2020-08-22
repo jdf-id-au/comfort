@@ -107,7 +107,7 @@
   "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings."
   ; clojure.repl doesn't quite have this; bit like dir-fn
   [m]
-  (print-table
+  (pprint/print-table
     (for [[ns syms] m
           :let [actual-ns (the-ns (get (ns-aliases *ns*) ns ns))]
           [sym var] (map #(vector % (get (ns-publics actual-ns) %)) syms)
