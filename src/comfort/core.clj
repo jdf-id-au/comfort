@@ -104,13 +104,13 @@
 ; REPL
 
 (defn make-help
-  "Show selected vars exported from given ns or alias, and their docs."
+  "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings."
   ; clojure.repl doesn't quite have this; bit like dir-fn
   [m]
   (print-table
-    (for [[ns vars] m
+    (for [[ns syms] m
           :let [actual-ns (the-ns (get (ns-aliases *ns*) ns ns))]
-          [sym var] (map #(vector % (get (ns-publics actual-ns) %)) vars)
+          [sym var] (map #(vector % (get (ns-publics actual-ns) %)) syms)
           :when (not= "help" (name sym))
           :let [{:keys [doc arglists]} (meta var)]]
       {"ns" (if (= actual-ns *ns*) "" ns)
