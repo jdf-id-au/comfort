@@ -107,7 +107,7 @@
   "Show selected vars exported from given ns or alias, and their docs."
   ; clojure.repl doesn't quite have this; bit like dir-fn
   [m]
-  (print-table
+  (pprint/print-table
     (for [[ns vars] m
           :let [actual-ns (the-ns (get (ns-aliases *ns*) ns ns))]
           [sym var] (select-keys (ns-publics actual-ns) vars)
