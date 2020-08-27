@@ -156,3 +156,18 @@
   `(let [start# (. System nanoTime)]
      (doseq ~seq-exprs ~@body)
      (/ (- (. System nanoTime) start#) 1e9)))
+
+(def not-daemon (partial filter #(false? (:daemon %))))
+(defn print-threads
+  "After https://gist.github.com/DayoOliyide/f353b15563675120e408b6b9f504628a
+   `(print-threads nil identity)` for full report."
+  ([] (print-threads [:name :state :alive :daemon]))
+  ([headers] (print-threads headers not-daemon))
+  ([headers pre-fn]
+   (let [thread-set (keys (Thread/getAllStackTraces))
+         thread-data (mapv bean thread-set)
+         headers (or headers (-> thread-data first keys))]
+     (clojure.pprint/print-table headers (pre-fn thread-data)))))
+
+(defn print-threads-str [& args]
+  (with-out-str (apply print-threads args)))
