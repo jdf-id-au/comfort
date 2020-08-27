@@ -104,8 +104,10 @@
 ; REPL
 
 (defn make-help
-  "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings."
-  ; clojure.repl doesn't quite have this; bit like dir-fn
+  "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings. Also see `clojure.repl/dir-fn`.
+   Usage:
+   user.clj: (def help (partial c/make-help {'ns1 ['var1 ...] ...}))
+   repl: (help)"
   [m]
   (pprint/print-table
     (for [[ns syms] m
@@ -159,8 +161,8 @@
 
 (def not-daemon (partial filter #(false? (:daemon %))))
 (defn print-threads
-  "After https://gist.github.com/DayoOliyide/f353b15563675120e408b6b9f504628a
-   `(print-threads nil identity)` for full report."
+  "`(print-threads nil identity)` for full report."
+  ; After https://gist.github.com/DayoOliyide/f353b15563675120e408b6b9f504628a
   ([] (print-threads [:name :state :alive :daemon]))
   ([headers] (print-threads headers not-daemon))
   ([headers pre-fn]
