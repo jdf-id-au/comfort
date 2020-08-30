@@ -54,6 +54,18 @@
                                  (do (.close csvr) nil))))]
        (extract data))))
 
+; Processing
+
+(defn group-by-key
+  "Like `group-by`, but groups map values according to a function of their key."
+  [f m]
+  (persistent!
+    (reduce
+      (fn [ret [k v]]
+        (let [k' (f k)]
+          (assoc! ret k' (conj (get ret k' []) v))))
+      (transient {}) m)))
+
 ; Output
 
 (defn no-overwrite [path func]
@@ -173,3 +185,7 @@
 
 (defn print-threads-str [& args]
   (with-out-str (apply print-threads args)))
+
+; Platform
+
+(def linux? (= "Linux" (System/getProperty "os.name")))
