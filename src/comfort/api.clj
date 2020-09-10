@@ -1,11 +1,13 @@
-(ns comfort.core
+(ns comfort.api
   "All in one namespace for the time being."
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.data.csv :as csv]
             [clojure.pprint :as pprint])
   (:import (java.nio.file FileSystems)
-           (java.io File)))
+           (java.io File)
+           (java.net InetAddress)
+           (java.lang ProcessHandle)))
 
 ; Files
 
@@ -116,7 +118,9 @@
 ; REPL
 
 (defn make-help
-  "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings. Also see `clojure.repl/dir-fn`.
+  "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings.
+   Return hostnames, pid and current ns in case user is disoriented!
+   Also see `clojure.repl/dir-fn`.
    Usage:
    user.clj: (def help (partial c/make-help {'ns1 ['var1 ...] ...}))
    repl: (help)"
@@ -128,7 +132,11 @@
           :when (not= "help" (name sym))
           :let [{:keys [doc arglists]} (meta var)]]
       {"ns" (if (= actual-ns *ns*) "" ns)
-       "sym" sym "args" arglists "doc" doc})))
+       "sym" sym "args" arglists "doc" doc}))
+  (let [localhost (InetAddress/getLocalHost)]
+    {:hostname [(.getHostName localhost) (.getCanonicalHostName localhost)]
+     :pid (.pid (ProcessHandle/current))
+     :ns (ns-name *ns*)}))
 
 ; Profiling
 

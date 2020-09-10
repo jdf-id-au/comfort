@@ -10,7 +10,7 @@ Collection of tiny things which make life easier
 
 ```clojure
 (ns project
-  (:require [comfort.core :as c]))
+  (:require [comfort.api :as c]))
 
 (c/timed (apply + (range 1000)))
 ;=> [4.12151E-4 499500]
