@@ -26,3 +26,18 @@
             `(do (def ~(symbol re-name#) ~re)
                  (defn ~(symbol matcher#) [~'s]
                    (zipmap ~parts (rest (re-matches ~re ~'s))))))))
+
+(defn debug
+  "Tap and pass through value, optionally with message and optionally filtering tapped value.
+   Use `clojure.core/add-tap` to see values."
+  ([pass-through] (debug nil nil pass-through))
+  ([msg pass-through] (debug msg nil pass-through))
+  ([msg flt pass-through]
+   (if flt
+     (if msg
+       (tap> [msg (filter flt pass-through)])
+       (tap> (filter flt pass-through)))
+     (if msg
+       (tap> [msg pass-through])
+       (tap> pass-through)))
+   pass-through))
