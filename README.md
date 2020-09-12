@@ -1,6 +1,6 @@
 # jdf/comfort
 
-Collection of tiny things which make life easier
+Collection of tiny things which make life easier. Constantly changing api for the time being!
 
 ## Usage
 ```edn
@@ -10,8 +10,8 @@ Collection of tiny things which make life easier
 
 ```clojure
 (ns project
-  (:require [comfort.api :as c]))
+  (:require [comfort.system :as cs]))
 
-(c/timed (apply + (range 1000)))
+(cs/timed (apply + (range 1000)))
 ;=> [4.12151E-4 499500]
 ```

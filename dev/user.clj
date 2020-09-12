@@ -1,7 +1,7 @@
 (ns user
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [comfort.api :as c]))
+            [comfort.core :as c]))
 
 (def words
   (->> "dev/alice.txt"
