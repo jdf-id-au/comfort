@@ -1,5 +1,4 @@
 (ns comfort.api
-  "All in one namespace for the time being."
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.data.csv :as csv]
@@ -68,6 +67,10 @@
           (assoc! ret k' (conj (get ret k' []) v))))
       (transient {}) m)))
 
+(defn unique-wrt
+  "Return function which checks whether items' values at key are unique."
+  [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
+
 ; Output
 
 (defn no-overwrite [path func]
@@ -93,7 +96,7 @@
   (no-overwrite file (fn [path] (spit path (with-out-str (pprint-with-meta content))))))
 
 (defn safe-spit
-  "Pretty print string to file unless file exists."
+  "Print content to file unless file exists."
   [file content]
   (no-overwrite file (fn [path] (spit path content))))
 
