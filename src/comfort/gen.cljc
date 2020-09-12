@@ -5,8 +5,7 @@
                 :cljs [[cljs.spec.alpha :as s]
                        [cljs.spec.gen.alpha :as gen]
                        [clojure.test.check.generators]])
-            [clojure.string :as str]
-            [clojure.spec.alpha :as s])
+            [clojure.string :as str])
   #?(:cljs (:require-macros [comfort.gen :refer [dict]]))
   (:refer-clojure :exclude [name comment]))
 

@@ -182,12 +182,12 @@
      (doseq ~seq-exprs ~@body)
      (/ (- (. System nanoTime) start#) 1e9)))
 
-(def not-daemon (partial filter #(false? (:daemon %))))
+(def -not-daemon (partial filter #(false? (:daemon %))))
 (defn print-threads
   "`(print-threads nil identity)` for full report."
   ; After https://gist.github.com/DayoOliyide/f353b15563675120e408b6b9f504628a
   ([] (print-threads [:name :state :alive :daemon]))
-  ([headers] (print-threads headers not-daemon))
+  ([headers] (print-threads headers -not-daemon))
   ([headers pre-fn]
    (let [thread-set (keys (Thread/getAllStackTraces))
          thread-data (mapv bean thread-set)
