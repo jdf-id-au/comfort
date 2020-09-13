@@ -1,5 +1,5 @@
 (ns comfort.core
-  #?(:cljs (:require-macros [comfort.core :refer [named-group-re]])))
+  #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
 ; Processing
 

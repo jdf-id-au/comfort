@@ -12,6 +12,7 @@
 (c/ngre NamedEmail [:name :username :host] #"^([^<>]+) <(\S+)@(\S+\.\S{2,})>")
 
 (s/def ::non-blank-string (s/and string? (comp not clojure.string/blank?)))
+; ::word allows but doesn't gen containing spaces
 (s/def ::word (s/with-gen ::non-blank-string gen/word))
 (s/def ::salad (s/with-gen ::non-blank-string gen/salad))
 
