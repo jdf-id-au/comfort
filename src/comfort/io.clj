@@ -53,6 +53,23 @@
                                (do (.close csvr) nil))))]
      (extract data))))
 
+(defn csv-header-only
+  "`namer` transforms column names."
+  ([file] (csv-header-only file keyword))
+  ([file namer] (with-open [csvr (io/reader file)] (->> csvr csv/read-csv first (map namer)))))
+
+(defn csv-row-seq-only
+  "Lazy-load whole table (except header). Preserves column order. Otherwise like `csv-row-seq'."
+  [file]
+  (let [csvr (io/reader file)
+        [_ & data] (csv/read-csv csvr)
+        extract (fn continue [data]
+                  (lazy-seq (if-let [row (first data)]
+                              (cons (map s/trim row)
+                                    (continue (next data)))
+                              (do (.close csvr) nil))))]
+    (extract data)))
+
 ; Output
 
 (defn no-overwrite [path func]
