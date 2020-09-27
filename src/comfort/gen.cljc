@@ -14,7 +14,7 @@
 (defn word "Return word generator." [] (s/gen (dict)))
 (defn salad "Return word salad generator." []
   (gen/fmap (fn [ws] (->> ws (interpose " ") (apply str)))
-            (s/gen (s/coll-of ::word))))
+            (s/gen (s/coll-of :comfort.spec/word))))
 
 (defn retag
   "Allow proper generation of multi-spec data.
