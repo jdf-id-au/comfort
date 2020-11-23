@@ -13,9 +13,31 @@
           (assoc! ret k' (conj (get ret k' []) v))))
       (transient {}) m)))
 
+(defn update-if-present
+  "Update key (if present in item) using function (which could be a map)."
+  [item k f]
+  {:pre [item k f] :post [%]}
+  (if (contains? item k)
+    (update item k f)
+    item))
+
 (defn unique-wrt
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
+
+(defn optional-str
+  "Represent both blank string and nil as nil (and therefore null in database).
+   Also trims string input."
+  [s] (if (clojure.string/blank? s) nil (clojure.string/trim s)))
+
+(defn without-nil-vals [m] ; TODO make recursive, or is it better this way?
+  (into {} (remove (comp nil? second)) m))
+
+(defn briefly
+  ([clip comment] (cond (nil? comment) nil
+                        (< (count comment) clip) comment
+                        :else (apply str (concat (take clip comment) "..."))))
+  ([comment] (briefly 20 comment)))
 
 #?(:clj (defmacro ngre
           "Named group regular expression: define both a regular expression <name>
