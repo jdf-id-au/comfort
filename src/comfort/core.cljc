@@ -27,6 +27,12 @@
                  (defn ~(symbol matcher#) [~'s]
                    (zipmap ~parts (rest (re-matches ~re ~'s))))))))
 
+(defn register
+  "Create order-retaining array-map of id->record using ->RecordType factory with vectors of values. Record must include :id field."
+  [factory & values]
+  (let [records (map #(apply factory %) values)]
+    (apply array-map (interleave (map :id records) records))))
+
 (defn debug
   "Tap and pass through value, optionally with message and optionally filtering tapped value.
    Use `clojure.core/add-tap` to see values."
