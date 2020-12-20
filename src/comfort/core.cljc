@@ -56,15 +56,15 @@
     (apply array-map (interleave (map :id records) records))))
 
 (defn debug
-  "Tap and pass through value, optionally with message and optionally filtering tapped value.
+  "Tap and pass through value, optionally with message and optionally running function on tapped value.
    Use `clojure.core/add-tap` to see values."
   ([pass-through] (debug nil nil pass-through))
   ([msg pass-through] (debug msg nil pass-through))
-  ([msg flt pass-through]
-   (if flt
+  ([msg f pass-through]
+   (if f
      (if msg
-       (tap> [msg (filter flt pass-through)])
-       (tap> (filter flt pass-through)))
+       (tap> [msg (f pass-through)])
+       (tap> (f pass-through)))
      (if msg
        (tap> [msg pass-through])
        (tap> pass-through)))

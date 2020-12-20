@@ -15,3 +15,5 @@ Collection of tiny things which make life easier. Constantly changing api for th
 (cs/timed (apply + (range 1000)))
 ;=> [4.12151E-4 499500]
 ```
+
+TODO set up for cljdoc
