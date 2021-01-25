@@ -35,8 +35,8 @@
 
 (defn briefly
   ([clip comment] (cond (nil? comment) nil
-                        (< (count comment) clip) comment
-                        :else (apply str (concat (take clip comment) "..."))))
+                        (<= (count comment) clip) comment
+                        :else (str (subs comment 0 clip) "...")))
   ([comment] (briefly 20 comment)))
 
 #?(:clj (defmacro ngre
