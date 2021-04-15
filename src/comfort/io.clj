@@ -4,9 +4,16 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint])
   (:import (java.io File)
-           (java.nio.file FileSystems)))
+           (java.nio.file FileSystems Path)))
 
 ; Files
+
+(defn get-extension
+  "Return File's extension (lower case)."
+  [file]
+  (let [fname (.getName file)
+        idx (s/last-index-of fname \.)]
+    (when idx (s/lower-case (subs fname (inc idx))))))
 
 (defn ext
   "Find files of a particular extension (omit period) in dirname.
@@ -35,6 +42,16 @@
         matcher (.getPathMatcher (FileSystems/getDefault) (str "glob:" full-pattern))
         matches (fn [file] (.matches matcher (.toPath file)))]
     (->> root-path io/file file-seq (filter matches))))
+
+(defn safe-subpath
+  "Return File representing path if it's truly a child of parent.
+   Use forward-slashes regardless of platform."
+  [parent & path-els]
+  (let [absolute-parent (-> parent (Path/of (into-array [""])) .toAbsolutePath .normalize)
+        absolute-child (-> parent (Path/of (into-array path-els)) .toAbsolutePath .normalize)
+        ret (.toFile absolute-child)]
+    (when (and (.startsWith absolute-child absolute-parent) (.isFile ret))
+      ret)))
 
 ; Input
 
