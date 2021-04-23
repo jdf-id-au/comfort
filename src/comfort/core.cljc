@@ -1,4 +1,5 @@
 (ns comfort.core
+  (:require [clojure.walk :as walk])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
 ; Processing
@@ -30,8 +31,20 @@
    Also trims string input."
   [s] (if (clojure.string/blank? s) nil (clojure.string/trim s)))
 
-(defn without-nil-vals [m] ; TODO make recursive, or is it better this way?
+(defn without-nil-vals
+  "Not recursive."
+  [m]
   (into {} (remove (comp nil? second)) m))
+
+(defn redact-keys
+  "Set all named keys at any depth in nested map to nil."
+  [m & ks]
+  (walk/prewalk
+    (fn [node]
+      (if (map? node)
+        (reduce (fn [n k] (update-if-present n k (constantly nil)))
+          node ks)
+        node)) m))
 
 (defn briefly
   ([clip comment] (cond (nil? comment) nil
