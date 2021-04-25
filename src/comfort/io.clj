@@ -87,6 +87,18 @@
                               (do (.close csvr) nil))))]
     (extract data)))
 
+(defn sql-statements
+  "Extract sql statements for use by jdbc/execute!
+   e.g.
+   `(jdbc/with-transaction [tx db-spec]
+      (for [stmt (-> \"tables.sql\" slurp sql-statements)]
+         (jdbc/execute! tx [stmt])))`"
+  [s] (-> s
+        (s/replace #"\r" "") ; remove CR
+        (s/replace #"\s*--.*" "") ; remove comments
+        (s/replace #"(?m)^\n+" "") ; remove blank lines
+        (s/split #";\n")))
+
 ; Output
 
 (defn no-overwrite [path func]
