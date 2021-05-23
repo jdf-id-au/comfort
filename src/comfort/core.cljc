@@ -26,6 +26,33 @@
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
 
+(defn hierarchicalise
+  "Return fully expanded hierarchy by key segment
+   when presented with seq of [key value],
+   when key is seqable."
+  [kvs]
+  (reduce
+    (fn across-kvs [acc [k v]]
+      (if (seqable? k)
+        (loop [acc-lev acc ; conj to end of vector
+               [kf & kr] k
+               up nil] ; conj to start of list
+          (if kf
+            (if-let [sub-lev
+                     (->> acc-lev
+                          (filter #(and (vector? %) (= kf (first %))))
+                          first)]
+              (recur sub-lev kr (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
+              ; make new level
+              (recur (if kr [kf] [kf v]) kr (conj up acc-lev)))
+            (reduce
+              (fn up-acc [innermost next-out]
+                (vec (conj next-out innermost)))
+              (conj up acc-lev))))
+        (throw (ex-info "Unseqable key" {:key k})))) ; TODO or add at node?
+    []
+    kvs))
+
 (defn optional-str
   "Represent both blank string and nil as nil (and therefore null in database).
    Also trims string input."
