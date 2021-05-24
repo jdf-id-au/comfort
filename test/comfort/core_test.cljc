@@ -15,7 +15,7 @@
            [:a :d] :D
            :z :Z}))) ; key is not seqable
   (is (= [[:a :A
-              [:b [:c :C]
+              [:b [:c :C] ; order preserved
                   :B]
               [:d :D]]
           [:z :Z]]
@@ -31,7 +31,7 @@
               :d {"" :D}}
           :z {"" :Z}}
         (cc/map-hierarchicalise
-          {[:a] :A ; key is seq len 1
+          {[:a] :A
            [:a :b] :B
            [:a :b :c] :C
            [:a :d] :D

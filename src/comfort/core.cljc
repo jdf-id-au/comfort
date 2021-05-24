@@ -27,7 +27,7 @@
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
 
 (defn hierarchicalise
-  "Return fully nested vector tree expanded hierarchy by key segment
+  "Return order-preserving vector tree hierarchy by key segment
    when presented with seq of [key value],
    when key is seqable (else treat key as seq of one item)."
   ; NB Cumbersome to interpret if key segs or vals are themselves vectors.
@@ -35,17 +35,17 @@
   (reduce
     (fn across-kvs [acc [k v]]
       (loop [acc-lev acc ; conj to end of vector
-             [kf & kr] (if (seqable? k) k [k])
+             [kf & kn] (if (seqable? k) k [k])
              up nil] ; conj to start of list
         (if kf
           (if-let [sub-lev
                    (->> acc-lev
                         (filter #(and (vector? %) (= kf (first %))))
                         first)]
-            (recur (if kr sub-lev (conj sub-lev v))
-              kr (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
+            (recur (if kn sub-lev (conj sub-lev v))
+              kn (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
             ; make new level
-            (recur (if kr [kf] [kf v]) kr (conj up acc-lev)))
+            (recur (if kn [kf] [kf v]) kn (conj up acc-lev)))
           (reduce
             (fn up-acc [innermost next-out]
               (vec (conj next-out innermost)))
@@ -55,7 +55,7 @@
 
 (defn map-hierarchicalise
   "Like hierarchicalise, but with nested maps.
-   Leaves assoc'd at leaf-key to allow branch to grow beyond leaf.
+   Leaves are assoc'd at leaf-key to allow branch to grow beyond leaf.
    Not order-preserving."
   [kvs leaf-key]
   (reduce
