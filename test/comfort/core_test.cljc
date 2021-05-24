@@ -14,6 +14,17 @@
            [:a :b :c] :C
            [:a :d] :D
            :z :Z}))) ; key is not seqable
+  (is (= [[:a :A
+              [:b [:c :C]
+                  :B]
+              [:d :D]]
+          [:z :Z]]
+        (cc/hierarchicalise
+          {[:a] :A
+           [:a :b :c] :C ; deeper first
+           [:a :b] :B
+           [:a :d] :D
+           :z :Z})))
   (is (= {:a {"" :A
               :b {"" :B
                   :c {"" :C}}

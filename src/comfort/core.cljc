@@ -42,7 +42,8 @@
                    (->> acc-lev
                         (filter #(and (vector? %) (= kf (first %))))
                         first)]
-            (recur sub-lev kr (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
+            (recur (if kr sub-lev (conj sub-lev v))
+              kr (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
             ; make new level
             (recur (if kr [kf] [kf v]) kr (conj up acc-lev)))
           (reduce
@@ -54,7 +55,8 @@
 
 (defn map-hierarchicalise
   "Like hierarchicalise, but with nested maps.
-   Leaves assoc'd at leaf-key to allow leaves not at tip of branch."
+   Leaves assoc'd at leaf-key to allow branch to grow beyond leaf.
+   Not order-preserving."
   [kvs leaf-key]
   (reduce
     (fn across-kvs [acc [k v]]
