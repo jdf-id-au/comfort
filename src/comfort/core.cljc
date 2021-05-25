@@ -27,43 +27,35 @@
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
 
 (defn hierarchicalise
-  "Return order-preserving vector tree hierarchy by key segment
-   when presented with seq of [key value],
-   when key is seqable (else treat key as seq of one item)."
-  ; NB Cumbersome to interpret if key segs or vals are themselves vectors.
-  [kvs]
-  (reduce
-    (fn across-kvs [acc [k v]]
-      (loop [acc-lev acc ; conj to end of vector
-             [kf & kn] (if (seqable? k) k [k])
-             up nil] ; conj to start of list
-        (if kf
-          (if-let [sub-lev
-                   (->> acc-lev
-                        (filter #(and (vector? %) (= kf (first %))))
-                        first)]
-            (recur (if kn sub-lev (conj sub-lev v))
-              kn (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
-            ; make new level
-            (recur (if kn [kf] [kf v]) kn (conj up acc-lev)))
-          (reduce
-            (fn up-acc [innermost next-out]
-              (vec (conj next-out innermost)))
-            (conj up acc-lev)))))
-    []
-    kvs))
-
-(defn map-hierarchicalise
-  "Like hierarchicalise, but with nested maps.
-   Leaves are assoc'd at leaf-key to allow branch to grow beyond leaf.
-   Not order-preserving."
-  [kvs leaf-key]
-  (reduce
-    (fn across-kvs [acc [k v]]
-      (update-in acc (if (seqable? k) k [k])
-        #(assoc % leaf-key v))) ; make hashmap if node is nil
-    {}
-    kvs))
+  "Reducer of seq of [key value] into []:
+   returns order-preserving vector tree hierarchy by key segment
+   when key is seqable (else treat key as seq of one item);
+   or into {}:
+   returns non-order-preserving nested map by key segment
+   assoc'ing values at ::leaf to allow branch to grow beyond leaf."
+  ; NB Cumbersome to interpret vector tree if key segs or vals are themselves vectors.
+  [acc [k v]]
+  (cond
+    (vector? acc)
+    (loop [acc-lev acc ; conj to end of vector
+           [kf & kn] (if (seqable? k) k [k])
+           up nil] ; conj to start of list
+      (if kf
+        (if-let [sub-lev
+                 (->> acc-lev
+                      (filter #(and (vector? %) (= kf (first %))))
+                      first)]
+          (recur (if kn sub-lev (conj sub-lev v))
+            kn (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
+          ; make new level
+          (recur (if kn [kf] [kf v]) kn (conj up acc-lev)))
+        (reduce
+          (fn up-acc [innermost next-out]
+            (vec (conj next-out innermost)))
+          (conj up acc-lev))))
+    (map? acc)
+    (update-in acc (if (seqable? k) k [k])
+      #(assoc % ::leaf v)))) ; make hashmap if node is nil
 
 (defn optional-str
   "Represent both blank string and nil as nil (and therefore null in database).

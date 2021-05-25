@@ -8,7 +8,7 @@
                   [:c :C]]
               [:d :D]]
           [:z :Z]]
-        (cc/hierarchicalise
+        (reduce cc/hierarchicalise []
           {[:a] :A ; key is seq len 1
            [:a :b] :B
            [:a :b :c] :C
@@ -19,24 +19,23 @@
                   :B]
               [:d :D]]
           [:z :Z]]
-        (cc/hierarchicalise
+        (reduce cc/hierarchicalise []
           {[:a] :A
            [:a :b :c] :C ; deeper first
            [:a :b] :B
            [:a :d] :D
            :z :Z})))
-  (is (= {:a {"" :A
-              :b {"" :B
-                  :c {"" :C}}
-              :d {"" :D}}
-          :z {"" :Z}}
-        (cc/map-hierarchicalise
+  (is (= {:a {::cc/leaf :A
+              :b {::cc/leaf :B
+                  :c {::cc/leaf :C}}
+              :d {::cc/leaf :D}}
+          :z {::cc/leaf :Z}}
+        (reduce cc/hierarchicalise {}
           {[:a] :A
            [:a :b] :B
            [:a :b :c] :C
            [:a :d] :D
-           :z :Z}
-          ""))))
+           :z :Z}))))
 ; for bidi, want to get to
 #_ {:a {"" :A
         :b {"" :B
