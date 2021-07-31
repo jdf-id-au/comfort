@@ -2,7 +2,8 @@
   (:require [clojure.string :as s]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
-            [clojure.pprint :as pprint])
+            [clojure.pprint :as pprint]
+            [comfort.core :as cc])
   (:import (java.io File)
            (java.nio.file FileSystems Path)))
 
@@ -131,11 +132,7 @@
 (defn write-csv-rows
   "Write list of (similarly-keyed) maps to writer. Not every keyword has to be in every map."
   [writer rows]
-  (let [columns (->> rows (mapcat keys) set sort)
-        kws? (every? keyword? columns)
-        headers (if kws? (map name columns) columns)]
-    (csv/write-csv writer
-                   (concat [headers] (for [row rows] (for [col columns] (get row col)))))))
+  (csv/write-csv writer (cc/tabulate rows)))
 
 (defn rows->csv
   [file rows]
