@@ -26,6 +26,16 @@
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
 
+(defn tabulate
+  "Convert seq of similarly-keyed maps to vec of headers then unqualified rows.
+   Not every keyword has to be in every map.
+   Only supports plain keywords at the moment."
+  [rows]
+  (let [columns (sort (into #{} (mapcat keys) rows))
+        kws? (every? keyword? columns)
+        headers (into [] (if kws? (map name columns) columns))]
+    (into [headers] (for [row rows] (into [] (for [col columns] (get row col)))))))
+
 (defn hierarchicalise
   "Reducer of seq of [key value] into []:
    returns order-preserving vector tree hierarchy by key segment
