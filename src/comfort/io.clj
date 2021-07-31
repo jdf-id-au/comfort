@@ -9,9 +9,9 @@
 ; Files
 
 (defn get-extension
-  "Return File's extension (lower case)."
+  "Return File or filename's extension (lower case)."
   [file]
-  (let [fname (.getName file)
+  (let [fname (if (string? file) file (.getName file))
         idx (s/last-index-of fname \.)]
     (when idx (s/lower-case (subs fname (inc idx))))))
 

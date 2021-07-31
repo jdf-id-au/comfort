@@ -1,5 +1,6 @@
 (ns comfort.core
-  (:require [clojure.walk :as walk])
+  (:require [clojure.walk :as walk]
+            [clojure.set :as set])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
 ; Processing
@@ -25,6 +26,11 @@
 (defn unique-wrt
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
+
+(defn distinct-keys?
+  "Check whether keys are distinct across maps."
+  [& ms]
+  (empty? (apply set/intersection (map (comp set keys) ms))))
 
 (defn hierarchicalise
   "Return order-preserving vector tree hierarchy by key segment
