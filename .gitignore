@@ -1,4 +1,5 @@
 .idea/
+.clj-kondo/
 .run/
 comfort.iml
 .nrepl-port
