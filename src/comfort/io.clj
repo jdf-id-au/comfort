@@ -57,7 +57,7 @@
 ; Input
 
 (defn csv-row-seq
-  "Lazy-load whole table into sorted maps of trimmed strings. `namer` transforms column names.
+  "Lazy-load whole table into order-preserving maps of trimmed strings. `namer` transforms column names. Last indistinctly named column wins.
    Should work on file or reader. Closes reader at end."
   ([file] (csv-row-seq file keyword))
   ([file namer]
@@ -66,7 +66,7 @@
          fieldnames (map namer header)
          extract (fn continue [data]
                    (lazy-seq (if-let [row (first data)]
-                               (cons (apply sorted-map (interleave fieldnames (map s/trim row)))
+                               (cons (apply array-map (interleave fieldnames (map s/trim row)))
                                      (continue (next data)))
                                (do (.close csvr) nil))))]
      (extract data))))
@@ -77,8 +77,7 @@
   ([file namer] (with-open [csvr (io/reader file)] (->> csvr csv/read-csv first (map namer)))))
 
 (defn csv-row-seq-only
-  "Lazy-load whole table (except header) into vectors of trimmed strings,
-   preserving column order. Otherwise like `csv-row-seq`.
+  "Lazy-load whole table (except header) into vectors of trimmed strings, preserving column order.
    Pretty redundant with `csv/read-csv` which is itself lazy..."
   [file]
   (let [csvr (io/reader file)
