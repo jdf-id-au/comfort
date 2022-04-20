@@ -31,18 +31,28 @@
                :let [name (namer (subs filename 0 (s/last-index-of filename extension)))]]
            [name file]))))
 
+(defn path-matcher
+  [root syntax pattern]
+  {:pre [(some-> root io/file .isDirectory)
+         (string? pattern)]}
+  (let [root-path (->> root io/file .getPath)
+        full-pattern (str root-path File/separator pattern)
+        matcher (.getPathMatcher (FileSystems/getDefault) (str syntax \: full-pattern))
+        matches (fn [file] (.matches matcher (.toPath file)))]
+    (->> root-path io/file file-seq (filter matches))))
+
 (defn glob
   "Find files matching (possibly subdirectory-matching) glob expression.
    Root path is prepended to glob expression.
    e.g. (glob \"path/to/dir\" \"**/*.csv\")"
   [root pattern]
-  {:pre [(some-> root io/file .isDirectory)
-         (string? pattern)]}
-  (let [root-path (->> root io/file .getPath)
-        full-pattern (str root-path File/separator pattern)
-        matcher (.getPathMatcher (FileSystems/getDefault) (str "glob:" full-pattern))
-        matches (fn [file] (.matches matcher (.toPath file)))]
-    (->> root-path io/file file-seq (filter matches))))
+  (path-matcher root "glob" pattern))
+
+(defn regex
+  "Find files matching regex.
+   Root path is prepended to regex."
+  [root pattern]
+  (path-matcher root "regex" pattern))
 
 (defn safe-subpath
   "Return File representing path if it's truly a child of parent.
