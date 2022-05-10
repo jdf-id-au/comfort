@@ -4,10 +4,10 @@
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [comfort.core :as cc])
-  (:import (java.io File)
+  (:import (java.io File BufferedReader)
            (java.nio.file FileSystems Path)))
 
-; Files
+;; Files
 
 (defn get-extension
   "Return File or filename's extension (lower case)."
@@ -64,14 +64,25 @@
     (when (and (.startsWith absolute-child absolute-parent) (.isFile ret))
       ret)))
 
-; Input
+;; Input
+
+(defn drop-bom
+  "Remove byte order mark from newly-opened UTF-8 reader."
+  ;; Simplified from
+  ;; https://commons.apache.org/proper/commons-io///jacoco/org.apache.commons.io.input/BOMInputStream.java.html
+  ;; https://commons.apache.org/proper/commons-io///jacoco/org.apache.commons.io/ByteOrderMark.java.html
+  [^BufferedReader r]
+  (.mark r 1)
+  (when (not= 0xfeff (.read r))
+    (.reset r))
+  r)
 
 (defn csv-row-seq
   "Lazy-load whole table into order-preserving maps of trimmed strings. `namer` transforms column names. Last indistinctly named column wins.
    Should work on file or reader. Closes reader at end."
   ([file] (csv-row-seq file keyword))
   ([file namer]
-   (let [csvr (io/reader file)
+   (let [csvr (-> file io/reader drop-bom)
          [header & data] (csv/read-csv csvr)
          fieldnames (map namer header)
          extract (fn continue [data]
@@ -84,7 +95,9 @@
 (defn csv-header-only
   "`namer` transforms column names."
   ([file] (csv-header-only file keyword))
-  ([file namer] (with-open [csvr (io/reader file)] (->> csvr csv/read-csv first (map namer)))))
+  ([file namer]
+   (with-open [csvr (-> file io/reader drop-bom)]
+     (->> csvr csv/read-csv first (map namer)))))
 
 (defn csv-row-seq-only
   "Lazy-load whole table (except header) into vectors of trimmed strings, preserving column order.
@@ -111,7 +124,7 @@
         (s/replace #"(?m)^\n+" "") ; remove blank lines
         (s/split #";\n")))
 
-; Output
+;; Output
 
 (defn no-overwrite [path func]
   (let [file (io/file path)]
