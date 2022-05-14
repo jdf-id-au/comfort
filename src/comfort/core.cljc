@@ -31,6 +31,12 @@
     item
     (assoc item k v)))
 
+(defn only
+  "Require argument to be coll of one item and return that item."
+  [[i & r :as x]]
+  {:pre [(nil? r)]}
+  i)
+
 (defn unique-wrt
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
