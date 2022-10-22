@@ -1,6 +1,7 @@
 (ns comfort.core
   (:require [clojure.walk :as walk]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [clojure.string :as str])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
 (defn group-by-key
@@ -44,20 +45,35 @@
   [& ms]
   (empty? (apply set/intersection (map (comp set keys) ms))))
 
-(defn tabulate
-  "Convert seq of similarly-keyed maps to vec of headers then unqualified rows.
-   Not every keyword has to be in every map.
-   Only supports plain keywords at the moment."
-  [rows]
-  (let [columns (sort (into #{} (mapcat keys) rows))
-        kws? (every? keyword? columns)
-        headers (into [] (if kws? (map name columns) columns))]
-    (into [headers] (for [row rows] (into [] (for [col columns] (get row col)))))))
-
 (defn optional-str
   "Represent both blank string and nil as nil (and therefore null in database).
    Also trims string input."
-  [s] (if (clojure.string/blank? s) nil (clojure.string/trim s)))
+  [s] (if (str/blank? s) nil (str/trim s)))
+
+(defn mapmap
+  "Map f over each coll within c." ; TODO transducer version (think about it)
+  [f c]
+  (map #(map f %) c))
+
+(defn tabulate
+  "Convert seq of similarly-keyed maps to vec containing header then unqualified rows.
+   `namer` transforms keys to column header names.
+   Not every key has to be in every map."
+  ([rows] (tabulate identity rows))
+  ([namer rows]
+   (let [columns (sort (into #{} (mapcat keys) rows))
+         headers (into [] (map namer columns))]
+     (into [headers] (for [row rows] (into [] (for [col columns] (get row col))))))))
+
+(defn detabulate
+  "Convert seq of header and unqualified rows into order-preserving maps.
+   `namer` transforms column header names to keys. Last indistinctly named column wins."
+  ([data] (detabulate identity data))
+  ([namer data]
+   (let [[header & rows] data
+         fieldnames (map namer header)
+         mapify (fn [row] (apply array-map (interleave fieldnames row)))]
+     (map mapify rows))))
 
 (defn without-nil-vals
   "Not recursive."

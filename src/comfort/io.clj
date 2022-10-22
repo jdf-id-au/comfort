@@ -5,7 +5,8 @@
             [clojure.pprint :as pprint]
             [comfort.core :as cc])
   (:import (java.io File BufferedReader)
-           (java.nio.file FileSystems Path)))
+           (java.nio.file FileSystems Path)
+           (java.util.zip GZIPInputStream GZIPOutputStream)))
 
 ;; Files
 
@@ -77,40 +78,30 @@
     (.reset r))
   r)
 
-(defn csv-row-seq
-  "Lazy-load whole table into order-preserving maps of trimmed strings. `namer` transforms column names. Last indistinctly named column wins.
-   Should work on file or reader. Closes reader at end."
-  ([file] (csv-row-seq file keyword))
-  ([file namer]
-   (let [csvr (-> file io/reader drop-bom)
-         [header & data] (csv/read-csv csvr)
-         fieldnames (map namer header)
-         extract (fn continue [data]
-                   (lazy-seq (if-let [row (first data)]
-                               (cons (apply array-map (interleave fieldnames (map s/trim row)))
-                                     (continue (next data)))
-                               (do (.close csvr) nil))))]
-     (extract data))))
+(defn csv-file-type [file]
+  (condp #(s/ends-with? %2 %1) file
+    "csv" :csv "csv.gz" :csvgz))
 
-(defn csv-header-only
-  "`namer` transforms column names."
-  ([file] (csv-header-only file keyword))
-  ([file namer]
-   (with-open [csvr (-> file io/reader drop-bom)]
-     (->> csvr csv/read-csv first (map namer)))))
+(defn csv-data
+  "Eagerly load csv as order-preserving maps of optional strings.
+   `namer` transforms column names. Last indistinctly named column wins."
+  ([reader] (csv-data keyword reader))
+  ([namer reader]
+   (with-open [r (drop-bom reader)]
+     (doall (->> (csv/read-csv r)
+              (cc/mapmap cc/optional-str)
+              (cc/detabulate namer))))))
 
-(defn csv-row-seq-only
-  "Lazy-load whole table (except header) into vectors of trimmed strings, preserving column order.
-   Pretty redundant with `csv/read-csv` which is itself lazy..."
-  [file]
-  (let [csvr (io/reader file)
-        [_ & data] (csv/read-csv csvr)
-        extract (fn continue [data]
-                  (lazy-seq (if-let [row (first data)]
-                              (cons (mapv s/trim row)
-                                    (continue (next data)))
-                              (do (.close csvr) nil))))]
-    (extract data)))
+(defn read-csv
+  ([file] (read-csv keyword file))
+  ([namer file]
+   (case (csv-file-type file)
+     :csv (with-open [r (io/reader file)]
+            (csv-data namer r))
+     :csvgz (with-open [i (io/input-stream file)
+                        g (GZIPInputStream. i)
+                        r (io/reader g)]
+              (csv-data namer r)))))
 
 (defn sql-statements
   "Extract sql statements for use by jdbc/execute!
@@ -153,20 +144,17 @@
   [file content]
   (no-overwrite file (fn [path] (spit path content))))
 
-(defn write-csv-rows
-  "Write list of (similarly-keyed) maps to writer. Not every keyword has to be in every map."
-  [writer rows]
-  (csv/write-csv writer (cc/tabulate rows)))
+(defn write-csv
+  "Write list of (similarly-keyed) maps to csv or csv.gz. Not every keyword has to be in every map."
+  ([file rows] (write-csv name file rows))
+  ([namer file rows]
+   (let [write-csv (fn [w rows] (csv/write-csv w (cc/tabulate namer rows)))]
+     (case (csv-file-type file)
+       :csv (with-open [w (io/writer file)] (write-csv w rows))
+       :csvgz (with-open [o (io/output-stream file)
+                          g (GZIPOutputStream. o)
+                          w (io/writer g)] (write-csv w rows))))))
 
-(defn rows->csv
-  [file rows]
-  {:pre [(s/ends-with? file ".csv")]}
-  (with-open [writer (io/writer file)]
-    (write-csv-rows writer rows)))
-
-(defn safe-csv "Save list of similarly-keyed maps to filename.csv unless it exists."
-  [file rows] (no-overwrite file (fn [path] (rows->csv path rows))))
-
-
-;; TODO incorporate clipboard (awt) in the style of exupero
-;; TODO transparently handle .csv.gz
+(defn safe-csv
+  "Save list of similarly-keyed maps to filename.csv or .csv.gz, unless it exists."
+  [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
