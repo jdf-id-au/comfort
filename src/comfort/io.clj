@@ -6,7 +6,8 @@
             [comfort.core :as cc])
   (:import (java.io File BufferedReader)
            (java.nio.file FileSystems Path)
-           (java.util.zip GZIPInputStream GZIPOutputStream)))
+           (java.util.zip GZIPInputStream GZIPOutputStream)
+           (java.awt.datatransfer DataFlavor StringSelection)))
 
 ;; Files
 
@@ -153,3 +154,42 @@
   "Save rows to filename.csv or .csv.gz, unless it exists.
    Use comfort.core/tabulate first if needed."
   [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
+
+
+;; Clipboard (after https://github.com/exupero/clipboard)
+
+(defn clipboard []
+  (.getSystemClipboard (java.awt.Toolkit/getDefaultToolkit)))
+
+(defn paste
+  "Paste from system clipboard."
+  []
+  (try (.. (clipboard)
+      (getContents nil)
+      (getTransferData (DataFlavor/stringFlavor)))
+    (catch java.lang.NullPointerException e
+      (println "Nothing in clipboard."))))
+
+(defn copy!
+  "Copy to system clipboard."
+  [text]
+  (let [selection (StringSelection. text)]
+    (.setContents (clipboard) selection selection)))
+
+#_(defn flavours []
+  (->> (clipboard) .getAvailableDataFlavors (map str)))
+
+#_(defn reader-flavour []
+  (->> (clipboard) .getAvailableDataFlavors
+    (filter #(= java.io.Reader (.getRepresentationClass %)))
+    first))
+
+#_(defn encoding
+  "Expecting UTF-16. Java also knows about windows-1252."
+  []
+  (try (.. (clipboard)
+         (getContents nil)
+         (getTransferData (reader-flavour))
+         (getEncoding))
+       (catch java.lang.NullPointerException e
+         (println "Nothing in clipboard."))))
