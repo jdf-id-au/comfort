@@ -49,7 +49,9 @@
     (update-in [to-id :prev] conj from-id)))
 
 (defn graph-by
-  "Return fn which can be used to reduce colls of nodes into map of {node-id {:prev #{node-id} :next #{node-id}}}"
+  "Return fn which can be used to reduce colls of nodes into map of {node-id {:prev #{node-id} :next #{node-id}}}.
+   from-id = to-id only add node-id, not an edge.
+   edge-fn needs to return [from-id to-id]"
   [edge-fn]
   (fn [graph node]
     (let [[from-id to-id] (edge-fn node)]

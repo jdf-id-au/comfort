@@ -169,3 +169,4 @@
 
 
 ;; TODO incorporate clipboard (awt) in the style of exupero
+;; TODO transparently handle .csv.gz
