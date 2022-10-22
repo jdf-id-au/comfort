@@ -166,3 +166,6 @@
 
 (defn safe-csv "Save list of similarly-keyed maps to filename.csv unless it exists."
   [file rows] (no-overwrite file (fn [path] (rows->csv path rows))))
+
+
+;; TODO incorporate clipboard (awt) in the style of exupero

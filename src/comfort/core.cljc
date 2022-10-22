@@ -3,8 +3,6 @@
             [clojure.set :as set])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
-; Processing
-
 (defn group-by-key
   "Like `group-by`, but groups map values according to a function of their key."
   [f m]
@@ -33,7 +31,7 @@
 
 (defn only
   "Require argument to be coll of one item and return that item."
-  [[i & r :as x]]
+  [[i & r]]
   {:pre [(nil? r)]}
   i)
 
@@ -55,37 +53,6 @@
         kws? (every? keyword? columns)
         headers (into [] (if kws? (map name columns) columns))]
     (into [headers] (for [row rows] (into [] (for [col columns] (get row col)))))))
-
-(defn hierarchicalise
-  "Reducer of seq of [key value] into []:
-   returns order-preserving vector tree hierarchy by key segment
-   when key is seqable (else treat key as seq of one item);
-   or into {}:
-   returns non-order-preserving nested map by key segment
-   assoc'ing values at ::leaf to allow branch to grow beyond leaf."
-  ; NB Cumbersome to interpret vector tree if key segs or vals are themselves vectors.
-  [acc [k v]]
-  (cond
-    (vector? acc)
-    (loop [acc-lev acc ; conj to end of vector
-           [kf & kn] (if (seqable? k) k [k])
-           up nil] ; conj to start of list
-      (if kf
-        (if-let [sub-lev
-                 (->> acc-lev
-                      (filter #(and (vector? %) (= kf (first %))))
-                      first)]
-          (recur (if kn sub-lev (conj sub-lev v))
-            kn (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
-          ; make new level
-          (recur (if kn [kf] [kf v]) kn (conj up acc-lev)))
-        (reduce
-          (fn up-acc [innermost next-out]
-            (vec (conj next-out innermost)))
-          (conj up acc-lev))))
-    (map? acc)
-    (update-in acc (if (seqable? k) k [k])
-      #(assoc % ::leaf v)))) ; make hashmap if node is nil
 
 (defn optional-str
   "Represent both blank string and nil as nil (and therefore null in database).
@@ -124,7 +91,7 @@
                    (zipmap ~parts (rest (re-matches ~re ~'s))))))))
 
 (defn register
-  "Create order-retaining array-map of id->record using ->RecordType factory with vectors of values. Record must include :id field."
+  "Create order-preserving array-map of id->record using ->RecordType factory with vectors of values. Record must include :id field."
   [factory & values]
   (let [records (map #(apply factory %) values)]
     (apply array-map (interleave (map :id records) records))))

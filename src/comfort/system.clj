@@ -3,7 +3,7 @@
   (:import (java.net InetAddress)
            (java.lang ProcessHandle)))
 
-; REPL
+;; REPL
 
 (defn make-help
   "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings.
@@ -26,7 +26,7 @@
      :pid (.pid (ProcessHandle/current))
      :ns (ns-name *ns*)}))
 
-; Profiling
+;; Profiling
 
 (defn mem-report
   ([] (mem-report :M))
@@ -82,6 +82,6 @@
 (defn print-threads-str [& args]
   (with-out-str (apply print-threads args)))
 
-; Platform
+;; Platform
 
 (def linux? (= "Linux" (System/getProperty "os.name")))
