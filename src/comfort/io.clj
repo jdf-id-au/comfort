@@ -83,25 +83,21 @@
     "csv" :csv "csv.gz" :csvgz))
 
 (defn csv-data
-  "Eagerly load csv as order-preserving maps of optional strings.
-   `namer` transforms column names. Last indistinctly named column wins."
-  ([reader] (csv-data keyword reader))
-  ([namer reader]
-   (with-open [r (drop-bom reader)]
-     (doall (->> (csv/read-csv r)
-              (cc/mapmap cc/optional-str)
-              (cc/detabulate namer))))))
+  [reader]
+  (with-open [r (drop-bom reader)]
+    (doall (->> (csv/read-csv r) (cc/mapmap cc/optional-str)))))
 
 (defn read-csv
-  ([file] (read-csv keyword file))
-  ([namer file]
-   (case (csv-file-type file)
-     :csv (with-open [r (io/reader file)]
-            (csv-data namer r))
-     :csvgz (with-open [i (io/input-stream file)
-                        g (GZIPInputStream. i)
-                        r (io/reader g)]
-              (csv-data namer r)))))
+  "Eagerly load csv as order-preserving maps of optional strings.
+   Use comfort.core/detabulate after if needed. "
+  [file]
+  (case (csv-file-type file)
+    :csv (with-open [r (io/reader file)]
+           (csv-data r))
+    :csvgz (with-open [i (io/input-stream file)
+                       g (GZIPInputStream. i)
+                       r (io/reader g)]
+             (csv-data r))))
 
 (defn sql-statements
   "Extract sql statements for use by jdbc/execute!
@@ -145,16 +141,15 @@
   (no-overwrite file (fn [path] (spit path content))))
 
 (defn write-csv
-  "Write list of (similarly-keyed) maps to csv or csv.gz. Not every keyword has to be in every map."
-  ([file rows] (write-csv name file rows))
-  ([namer file rows]
-   (let [write-csv (fn [w rows] (csv/write-csv w (cc/tabulate namer rows)))]
-     (case (csv-file-type file)
-       :csv (with-open [w (io/writer file)] (write-csv w rows))
-       :csvgz (with-open [o (io/output-stream file)
-                          g (GZIPOutputStream. o)
-                          w (io/writer g)] (write-csv w rows))))))
+  "Write rows to csv or csv.gz. Use comfort.core/tabulate first if needed."
+  [file rows]
+  (case (csv-file-type file)
+    :csv (with-open [w (io/writer file)] (csv/write-csv w rows))
+    :csvgz (with-open [o (io/output-stream file)
+                       g (GZIPOutputStream. o)
+                       w (io/writer g)] (csv/write-csv w rows))))
 
 (defn safe-csv
-  "Save list of similarly-keyed maps to filename.csv or .csv.gz, unless it exists."
+  "Save rows to filename.csv or .csv.gz, unless it exists.
+   Use comfort.core/tabulate first if needed."
   [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
