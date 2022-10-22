@@ -4,6 +4,44 @@
             [clojure.string :as str])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
+;; Text
+
+(defn optional-str
+  "Represent both blank string and nil as nil (and therefore null in database).
+   Also trims string input."
+  [s] (if (str/blank? s) nil (str/trim s)))
+
+(defn briefly
+  ([clip comment] (cond (nil? comment) nil
+                        (<= (count comment) clip) comment
+                        :else (str (subs comment 0 clip) "...")))
+  ([comment] (briefly 20 comment)))
+
+#?(:clj (defmacro ngre
+          "Named group regular expression: define both a regular expression <name>
+           and a function <name>-parts calling re-matches which names the found groups."
+          [name parts re]
+          (let [re-name# name
+                matcher# (str name "-parts")]
+            `(do (def ~(symbol re-name#) ~re)
+                 (defn ~(symbol matcher#) [~'s]
+                   (zipmap ~parts (rest (re-matches ~re ~'s))))))))
+
+;; Collections
+
+(defn mapmap
+  "Map f over each coll within c." ; TODO transducer version (think about it)
+  [f c]
+  (map #(map f %) c))
+
+(defn only
+  "Require argument to be coll of one item and return that item."
+  [[i & r]]
+  {:pre [(nil? r)]}
+  i)
+
+;; Maps
+
 (defn group-by-key
   "Like `group-by`, but groups map values according to a function of their key."
   [f m]
@@ -30,12 +68,6 @@
     item
     (assoc item k v)))
 
-(defn only
-  "Require argument to be coll of one item and return that item."
-  [[i & r]]
-  {:pre [(nil? r)]}
-  i)
-
 (defn unique-wrt
   "Return function which checks whether items' values at key are unique."
   [key] (fn [items] (or (empty? items) (apply distinct? (map key items)))))
@@ -45,15 +77,28 @@
   [& ms]
   (empty? (apply set/intersection (map (comp set keys) ms))))
 
-(defn optional-str
-  "Represent both blank string and nil as nil (and therefore null in database).
-   Also trims string input."
-  [s] (if (str/blank? s) nil (str/trim s)))
+(defn without-nil-vals
+  "Not recursive."
+  [m]
+  (into {} (remove (comp nil? second)) m))
 
-(defn mapmap
-  "Map f over each coll within c." ; TODO transducer version (think about it)
-  [f c]
-  (map #(map f %) c))
+(defn redact-keys
+  "Set all named keys at any depth in nested map to nil."
+  [m & ks]
+  (walk/prewalk
+    (fn [node]
+      (if (map? node)
+        (reduce (fn [n k] (update-if-present n k (constantly nil)))
+          node ks)
+        node)) m))
+
+(defn register
+  "Create order-preserving array-map of id->record using ->RecordType factory with vectors of values. Record must include :id field."
+  [factory & values]
+  (let [records (map #(apply factory %) values)]
+    (apply array-map (interleave (map :id records) records))))
+
+;; Tables
 
 (defn tabulate
   "Convert seq of similarly-keyed maps to vec containing header then unqualified rows.
@@ -75,42 +120,86 @@
          mapify (fn [row] (apply array-map (interleave fieldnames row)))]
      (map mapify rows))))
 
-(defn without-nil-vals
-  "Not recursive."
-  [m]
-  (into {} (remove (comp nil? second)) m))
+;; Graphs
 
-(defn redact-keys
-  "Set all named keys at any depth in nested map to nil."
-  [m & ks]
-  (walk/prewalk
-    (fn [node]
-      (if (map? node)
-        (reduce (fn [n k] (update-if-present n k (constantly nil)))
-          node ks)
-        node)) m))
+(defn hierarchicalise
+  "Reducer of seq of [key value]
+   into []:
+   returns order-preserving vector tree hierarchy by key segment
+   when key is seqable (else treat key as seq of one item);
+   or into {}:
+   returns non-order-preserving nested map by key segment
+   assoc'ing values at ::leaf to allow branch to grow beyond leaf."
+  ; NB Cumbersome to interpret vector tree if key segs or vals are themselves vectors.
+  [acc [k v]]
+  (cond
+    (vector? acc)
+    (loop [acc-lev acc ; conj to end of vector
+           [kf & kn] (if (seqable? k) k [k])
+           up nil] ; conj to start of list
+      (if kf
+        (if-let [sub-lev
+                 (->> acc-lev
+                      (filter #(and (vector? %) (= kf (first %))))
+                      first)]
+          (recur (if kn sub-lev (conj sub-lev v))
+            kn (conj up (into [] (remove #(= sub-lev %)) acc-lev)))
+          ; make new level
+          (recur (if kn [kf] [kf v]) kn (conj up acc-lev)))
+        (reduce
+          (fn up-acc [innermost next-out]
+            (vec (conj next-out innermost)))
+          (conj up acc-lev))))
+    (map? acc)
+    (update-in acc (if (seqable? k) k [k])
+      #(assoc % ::leaf v)))) ; make hashmap if node is nil
 
-(defn briefly
-  ([clip comment] (cond (nil? comment) nil
-                        (<= (count comment) clip) comment
-                        :else (str (subs comment 0 clip) "...")))
-  ([comment] (briefly 20 comment)))
+;; for reference https://groups.google.com/g/clojure/c/h1m6Qjuh3wA/m/pRqNY5HlYJEJ
 
-#?(:clj (defmacro ngre
-          "Named group regular expression: define both a regular expression <name>
-           and a function <name>-parts calling re-matches which names the found groups."
-          [name parts re]
-          (let [re-name# name
-                matcher# (str name "-parts")]
-            `(do (def ~(symbol re-name#) ~re)
-                 (defn ~(symbol matcher#) [~'s]
-                   (zipmap ~parts (rest (re-matches ~re ~'s))))))))
+(defn add-node-id
+  [graph id]
+  (if (graph id)
+    graph
+    (assoc graph id {:next #{} :prev #{}})))
 
-(defn register
-  "Create order-preserving array-map of id->record using ->RecordType factory with vectors of values. Record must include :id field."
-  [factory & values]
-  (let [records (map #(apply factory %) values)]
-    (apply array-map (interleave (map :id records) records))))
+(defn add-edge
+  [graph from-id to-id]
+  (-> graph
+    (add-node-id from-id)
+    (add-node-id to-id)
+    (update-in [from-id :next] conj to-id)
+    (update-in [to-id :prev] conj from-id)))
+
+(defn graph-by
+  "Return fn which can be used to reduce colls of nodes into map of {node-id {:prev #{node-id} :next #{node-id}}}.
+   from-id = to-id only add node-id, not an edge.
+   edge-fn needs to return [from-id to-id]"
+  [edge-fn]
+  (fn [graph node]
+    (let [[from-id to-id] (edge-fn node)]
+      (if (and from-id to-id)
+        (if (= from-id to-id)
+          (add-node-id graph from-id)
+          (add-edge graph from-id to-id))
+        (do
+          (println "Skipped node (need both from-id and to-id):" node)
+          graph)))))
+
+(defn dag
+  "Cycle at root will return empty map."
+  ([graph] (into {} (for [[node-id {:keys [prev]}] graph
+                          :when (empty? prev)]
+                      [node-id (dag node-id graph '())])))
+  ([node-id graph path]
+   (let [seen (set path)
+         proposed (conj path node-id)]
+     (if (seen node-id)
+       (conj proposed ::cycle-detected)
+       (into {}
+         (for [child (get-in graph [node-id :next])]
+           [child (dag child graph proposed)]))))))
+
+;; Dev
 
 (defn debug
   "Tap and pass through value, optionally with message and optionally running function on tapped value.
