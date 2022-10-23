@@ -164,11 +164,21 @@
 (defn paste
   "Paste from system clipboard."
   []
-  (try (.. (clipboard)
-      (getContents nil)
-      (getTransferData (DataFlavor/stringFlavor)))
-    (catch java.lang.NullPointerException e
-      (println "Nothing in clipboard."))))
+  (.. (clipboard)
+    (getContents nil)
+    (getTransferData (DataFlavor/stringFlavor))))
+
+(defn retry-paste
+  "Paste from system clipboard, retrying after delay if IOException.
+   Returns nil if fails second time."
+  [delay-ms]
+  (try (paste)
+       (catch java.io.IOException e
+         (println "Clipboard failure, trying again.")
+         (Thread/sleep delay-ms)
+         (try (paste)
+              (catch Exception e
+                (println "Unsuccessful, returning nil." e))))))
 
 (defn copy!
   "Copy to system clipboard."
