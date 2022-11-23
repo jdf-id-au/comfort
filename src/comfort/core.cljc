@@ -112,7 +112,7 @@
 
 (defn detabulate
   "Convert seq of header and unqualified rows into order-preserving maps.
-   `namer` transforms column header names to keys. Last indistinctly named column wins."
+   `namer` transforms column header names to keys. Last indistinctly keyed column wins."
   ([data] (detabulate identity data))
   ([namer data]
    (let [[header & rows] data

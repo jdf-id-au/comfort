@@ -155,7 +155,6 @@
    Use comfort.core/tabulate first if needed."
   [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
 
-
 ;; Clipboard (after https://github.com/exupero/clipboard)
 
 (defn clipboard []
