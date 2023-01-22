@@ -178,7 +178,7 @@
   (fn [graph node]
     (let [[from-id to-id] (edge-fn node)]
       (if (and from-id to-id)
-        (if (= from-id to-id)
+        (if (= from-id to-id) ; strictly this is a cycle, but is elided
           (add-node-id graph from-id)
           (add-edge graph from-id to-id))
         (do
@@ -186,7 +186,7 @@
           graph)))))
 
 (defn dag
-  "Cycle at root will return empty map."
+  "Cycle at root will return empty map." ; FIXME?
   ([graph] (into {} (for [[node-id {:keys [prev]}] graph
                           :when (empty? prev)]
                       [node-id (dag node-id graph '())])))
@@ -194,7 +194,7 @@
    (let [seen (set path)
          proposed (conj path node-id)]
      (if (seen node-id)
-       (conj proposed ::cycle-detected)
+       ::cycle-detected
        (into {}
          (for [child (get-in graph [node-id :next])]
            [child (dag child graph proposed)]))))))
