@@ -163,13 +163,13 @@
 (defn paste
   "Paste from system clipboard."
   []
+  {:post [(not (s/blank? %))]}
   (.. (clipboard)
     (getContents nil)
     (getTransferData (DataFlavor/stringFlavor))))
 
 (defn retry-paste
-  "Paste from system clipboard, retrying after delay if IOException.
-   Returns nil if fails second time."
+  "Paste from system clipboard, retrying once after delay if IOException."
   [delay-ms]
   (try (paste)
        (catch java.io.IOException e
@@ -177,7 +177,7 @@
          (Thread/sleep delay-ms)
          (try (paste)
               (catch Exception e
-                (println "Unsuccessful, returning nil." e))))))
+                (println "Unsuccessful clipboard retry." e))))))
 
 (defn copy!
   "Copy to system clipboard."
