@@ -2,6 +2,12 @@
   (:require [clojure.test :refer :all]
             [comfort.core :as cc]))
 
+(deftest collate-by
+  (is (= {:a #{:b :c}, :b #{:d :e}, :c #{nil}}
+        (reduce (cc/collate-by first second)
+          (sorted-map)
+          [[:a :b] [:a :c] [:b :d] [:b :e] [:c nil]]))))
+
 (deftest tabulate
   (is (= [["a" "b" "c"]
           [1 2 3]

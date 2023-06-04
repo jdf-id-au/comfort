@@ -40,6 +40,13 @@
   {:pre [(nil? r)]}
   i)
 
+(defn collate-by
+  "Use to reduce a coll into a map of key -> coll of vals (default sorted-set).
+  Like group-by but less voluminous." ; TODO could impl with transient
+  ([keyfn valfn] (collate-by keyfn valfn (sorted-set)))
+  ([keyfn valfn into-coll]
+   (fn [acc x] (update acc (keyfn x) (fnil #(conj % (valfn x)) into-coll)))))
+
 ;; Maps
 
 (defn group-by-key
