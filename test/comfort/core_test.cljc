@@ -9,10 +9,10 @@
           [[:a :b] [:a :c] [:b :d] [:b :e] [:c nil]]))))
 
 (deftest tabulate
-  (is (= [["a" "b" "c"]
-          [1 2 3]
-          [4 5 6]]
-        (cc/tabulate name [{:c 3 :a 1 :b 2} {:b 5 :a 4 :c 6}])))
+  (is (= [["a" "b" "c" "d"]
+          [1 2 3 nil]
+          [4 5 6 7]]
+        (cc/tabulate name [{:c 3 :a 1 :b 2} {:b 5 :a 4 :c 6 :d 7}])))
   (is (= [["a" "b" "c"]
           [1 2 3]
           [4 5 6]]
