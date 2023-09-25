@@ -19,7 +19,7 @@
 (defn painter
   "Example painter method."
   [^JComponent c ^Graphics2D g]
-  (.setBackground g Color/YELLOW)
+  (.setBackground g Color/BLUE)
   (.clearRect g 0 0 (/ (.getWidth c) 2) (.getHeight c)))
 
 (defn frame
@@ -27,6 +27,8 @@
    internally and is updatable using the returned fn."
   [painter]
   (let [painter* (atom painter)
+        #_#__ (add-watch painter* :watch (fn [k r o n]
+                                       (println "updated" r "on" k)))
         p (doto (proxy [JPanel] []
                   (paint [g]
                     (@painter* this ^Graphics2D g)))
@@ -36,7 +38,7 @@
             (.add p)
             (.pack)
             (.setLocationRelativeTo nil)
-            (.addWindowStateListener
+            #_(.addWindowStateListener
               (reify WindowStateListener
                 (windowStateChanged [this e]
                   (condp = e
@@ -55,21 +57,26 @@
                 (componentShown [self e])
                 (componentHidden [self e]))))]
     (fn reset-painter [painter]
+      #_(println "updating" f "with" painter)
       (reset! painter* painter)
+      ;; FIXME Only seems to repaint the first frame if multiple frames use same painter.
+      ;; (But why would anyone want that?)
+      ;; (Subsqeuent repaints work.)
       (.update f (.getGraphics f)))))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol representing
    a var containing a fn. The frame redraws when the var is redefined."
   [painter]
-  `(let [ret# (frame ~painter)]
-     (add-watch #'~painter :refresh
+  `(let [ret# (frame ~painter)
+         key# (keyword (gensym))]
+     (add-watch #'~painter key#
        (fn ~'watch-painter ~'[k r o n]
-         ~'(println "watching" r)
+         (println "watching" #'~painter "on" key#)
          (ret# ~painter)))
      (fn ~'unwatch-painter ~'[]
-       (println "unwatching" #'~painter)
-       (remove-watch #'~painter :refresh))))
+       (println "unwatching" #'~painter "on" key#)
+       (remove-watch #'~painter key#))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
@@ -80,6 +87,8 @@
   ;;      :refresh
   ;;      (clojure.core/fn [k r o n] (println k r) (ret__65896__auto__ hmm)))
   ;;     ret__65896__auto__)
-  (def rethmm (repl-frame painter))
-  (rethmm)
+  (def closer (repl-frame painter))
+  (closer)
+  (.getWatches #'painter)
+  (doseq [[k w] (.getWatches #'painter)] (remove-watch #'painter k))
   )
