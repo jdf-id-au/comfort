@@ -27,8 +27,6 @@
    internally and is updatable using the returned fn."
   [painter]
   (let [painter* (atom painter)
-        #_#__ (add-watch painter* :watch (fn [k r o n]
-                                       (println "updated" r "on" k)))
         p (doto (proxy [JPanel] []
                   (paint [g]
                     (@painter* this ^Graphics2D g)))
@@ -43,7 +41,6 @@
                 (windowStateChanged [this e]
                   (condp = e
                     WindowEvent/WINDOW_CLOSING
-                    (remove-watch painter* :refresh)
                     nil))))
             (.setVisible true)
             (.setResizable true)
@@ -57,7 +54,6 @@
                 (componentShown [self e])
                 (componentHidden [self e]))))]
     (fn reset-painter [painter]
-      #_(println "updating" f "with" painter)
       (reset! painter* painter)
       ;; FIXME Only seems to repaint the first frame if multiple frames use same painter.
       ;; (But why would anyone want that?)
@@ -80,13 +76,6 @@
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
-  ;; => (clojure.core/let
-  ;;     [ret__65896__auto__ (comfort.ui/frame hmm)]
-  ;;     (clojure.core/add-watch
-  ;;      #'hmm
-  ;;      :refresh
-  ;;      (clojure.core/fn [k r o n] (println k r) (ret__65896__auto__ hmm)))
-  ;;     ret__65896__auto__)
   (def closer (repl-frame painter))
   (closer)
   (.getWatches #'painter)
