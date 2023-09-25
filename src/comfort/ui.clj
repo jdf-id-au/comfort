@@ -19,7 +19,7 @@
 (defn painter
   "Example painter method."
   [^JComponent c ^Graphics2D g]
-  (.setBackground g Color/BLUE)
+  (.setBackground g Color/YELLOW)
   (.clearRect g 0 0 (/ (.getWidth c) 2) (.getHeight c)))
 
 (defn frame
@@ -53,31 +53,38 @@
                 (componentMoved [self e])
                 (componentShown [self e])
                 (componentHidden [self e]))))]
-    (fn reset-painter [painter]
-      (reset! painter* painter)
-      ;; FIXME Only seems to repaint the first frame if multiple frames use same painter.
-      ;; (But why would anyone want that?)
-      ;; (Subsqeuent repaints work.)
-      (.update f (.getGraphics f)))))
+    {:reset-painter
+     (fn reset-painter [painter]
+       (reset! painter* painter)
+       ;; FIXME Only seems to repaint the first frame if multiple frames use same painter.
+       ;; (But why would anyone want that?)
+       ;; (Subsqeuent repaints work.)
+       (.update f (.getGraphics f)))
+     :repaint (fn repaint [] (.update f (.getGraphics f)))
+     :frame f
+     :panel p}))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol representing
    a var containing a fn. The frame redraws when the var is redefined."
   [painter]
-  `(let [ret# (frame ~painter)
-         key# (keyword (gensym))]
-     (add-watch #'~painter key#
+  `(let [f# (frame ~painter)
+         k# (keyword (gensym))]
+     (println "watching" #'~painter "on" k#)
+     (add-watch #'~painter k#
        (fn ~'watch-painter ~'[k r o n]
-         (println "watching" #'~painter "on" key#)
-         (ret# ~painter)))
-     (fn ~'unwatch-painter ~'[]
-       (println "unwatching" #'~painter "on" key#)
-       (remove-watch #'~painter key#))))
+         ((:reset-painter f#) ~painter)))
+     (assoc f#
+       ;; TODO could return a :watch-painter
+       :unwatch-painter
+       (fn ~'unwatch-painter ~'[]
+         (println "unwatching" #'~painter "on" k#)
+         (remove-watch #'~painter k#)))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
-  (def closer (repl-frame painter))
-  (closer)
+  (def f (repl-frame painter))
+  ((:unwatch-painter f))
   (.getWatches #'painter)
   (doseq [[k w] (.getWatches #'painter)] (remove-watch #'painter k))
   )
