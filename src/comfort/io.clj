@@ -7,6 +7,9 @@
   (:import (java.io File BufferedReader)
            (java.nio.file FileSystems Path)
            (java.util.zip GZIPInputStream GZIPOutputStream)
+           (java.nio.charset StandardCharsets)
+           (java.io ByteArrayOutputStream)
+           (java.util HexFormat)
            (java.awt.datatransfer DataFlavor StringSelection)))
 
 ;; Files
@@ -112,6 +115,25 @@
         (s/replace #"(?m)^\n+" "") ; remove blank lines
         (s/split #";\n")))
 
+(defn hex-value
+  "Return int."
+  [c]
+  (if (Character/isDigit c)
+    (-> c int (- (int \0)))
+    (-> c Character/toUpperCase int (- (int \A)) (+ 0x0a))))
+
+(defn percent-decode
+  [s]
+  (let [baos (ByteArrayOutputStream.)]
+    (loop [[a b c & r :as s] s]
+      (case a \% (if (and (HexFormat/isHexDigit (int b)) (HexFormat/isHexDigit (int c)))
+                   (do (.write baos (int (+ (* (hex-value b) 0x10) (hex-value c))))
+                       (recur r))
+                   nil) ; silence if invalid
+            nil (.toString baos StandardCharsets/UTF_8)
+            (do (.write baos (int a))
+                (recur (rest s)))))))
+
 ;; Output
 
 (defn no-overwrite [path func]
@@ -154,6 +176,23 @@
   "Save rows to filename.csv or .csv.gz, unless it exists.
    Use comfort.core/tabulate first if needed."
   [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
+
+(defn percent-encode ; stunningly absent from jre (URI unhelpful)
+  ;; With thanks to http://www.java2s.com/example/java-utility-method/url-encode/uridecode-string-src-3973f.html
+  ;; https://www.ietf.org/rfc/rfc3986.txt
+  [s]
+  (let [sb (StringBuilder.)
+        ok (set "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")]
+      (doseq [c s]
+        (if (ok c)
+          (.append sb c)
+          (doseq [b (.getBytes (str c))
+                  :let [upper (bit-and (bit-shift-right b 4) 0xf)
+                        lower (bit-and b 0xf)]]
+            (.append sb \%)
+            (.append sb (Integer/toHexString upper))
+            (.append sb (Integer/toHexString lower)))))
+      (str sb)))
 
 ;; Clipboard (after https://github.com/exupero/clipboard)
 
