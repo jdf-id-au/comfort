@@ -7,6 +7,7 @@
 ;; Libraries
 
 (defn try-resolve
+  "Require a ns-qualified symbol if possible (e.g. relevant dep/alias is active), else nil."
   [sym]
   (try (requiring-resolve sym) (catch FileNotFoundException _)))
 

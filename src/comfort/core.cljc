@@ -222,3 +222,9 @@
        (tap> [msg pass-through])
        (tap> pass-through)))
    pass-through))
+
+#?(:clj
+   (defn idef
+     "Wraps intern for easier docstring."
+     [ns sym doc val]
+     (intern ns (with-meta sym {:doc doc}) val)))
