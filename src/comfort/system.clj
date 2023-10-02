@@ -1,7 +1,14 @@
 (ns comfort.system
   (:require [clojure.pprint :as pprint])
   (:import (java.net InetAddress)
-           (java.lang ProcessHandle)))
+           (java.lang ProcessHandle)
+           (java.io FileNotFoundException)))
+
+;; Libraries
+
+(defn try-resolve
+  [sym]
+  (try (requiring-resolve sym) (catch FileNotFoundException _)))
 
 ;; REPL
 
