@@ -9,6 +9,7 @@
            (java.awt
              Frame
              Graphics Graphics2D
+             RenderingHints
              Dimension
              Color BasicStroke
              Rectangle)
@@ -79,6 +80,7 @@
         h (.getHeight p)
         bi (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
         g (.createGraphics bi)]
+    (.setRenderingHint g RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
     (.setBackground g Color/WHITE)
     (.clearRect g 0 0 w h)
     (.paintAll p g)
@@ -107,4 +109,6 @@
   ((:unwatch-painter f))
   (.getWatches #'painter)
   (doseq [[k w] (.getWatches #'painter)] (remove-watch #'painter k))
+  (map str (ImageIO/getWriterFileSuffixes))
+  ;; => ("tif" "jpg" "tiff" "bmp" "gif" "png" "wbmp" "jpeg")
   )
