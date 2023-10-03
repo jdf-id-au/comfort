@@ -1,6 +1,7 @@
 (ns comfort.ui
   "Simple no-dependency Swing vis infra.
    No GUI interactivity yet..."
+  (:require [clojure.java.io :as io])
   (:import (java.time LocalDate LocalDateTime)
            (java.time.temporal ChronoUnit)
            (java.time.format DateTimeFormatter)
@@ -14,7 +15,9 @@
            (java.awt.event
              WindowStateListener
              WindowEvent
-             ComponentListener)))
+             ComponentListener)
+           (java.awt.image BufferedImage)
+           (javax.imageio ImageIO)))
 
 (defn painter
   "Example painter method."
@@ -63,6 +66,23 @@
      :repaint (fn repaint [] (.update f (.getGraphics f)))
      :frame f
      :panel p}))
+
+(defn resize
+  [{:keys [panel frame]} w h]
+  (.setPreferredSize panel (Dimension. w h))
+  (.pack frame))
+
+(defn save-png
+  [{:keys [panel]} filename]
+  (let [p panel
+        w (.getWidth p)
+        h (.getHeight p)
+        bi (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
+        g (.createGraphics bi)]
+    (.setBackground g Color/WHITE)
+    (.clearRect g 0 0 w h)
+    (.paintAll p g)
+    (ImageIO/write bi "png" (io/file filename))))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol representing
