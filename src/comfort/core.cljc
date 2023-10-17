@@ -107,15 +107,30 @@
 
 ;; Tables
 
+(defn column-order
+  [preferred actual]
+  (let [specified (set preferred)
+        actual (set actual)
+        unspecified (set/difference actual specified)
+        missing (set/difference specified actual)]
+    (into (filterv (complement missing) preferred) (sort unspecified))))
+
 (defn tabulate
   "Convert seq of similarly-keyed maps to vec containing header then unqualified rows.
    `namer` transforms keys to column header names.
-   Not every key has to be in every map."
+   Not every key has to be in every map.
+   `colseq` specifies preferred column order (prior to application of `namer`).
+   Unspecified columns are sorted and appended, specified-but-missing columns are ignored.
+   "
   ([rows] (tabulate identity rows))
   ([namer rows]
    (let [columns (sort (into #{} (mapcat keys) rows))
          headers (into [] (map namer columns))]
-     (into [headers] (for [row rows] (into [] (for [col columns] (get row col))))))))
+     (into [headers] (for [row rows] (into [] (for [col columns] (get row col)))))))
+  ([colseq namer rows]
+   (let [columns (column-order colseq (into #{} (mapcat keys) rows))]
+     (into [(map namer columns)]
+       (for [row rows] (into [] (for [col columns] (get row col))))))))
 
 (defn detabulate
   "Convert seq of header and unqualified rows into order-preserving maps.

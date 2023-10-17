@@ -70,7 +70,12 @@
 
 (defn resize
   [{:keys [panel frame]} w h]
-  (.setPreferredSize panel (Dimension. w h))
+  (let [d (Dimension. w h)
+        _ (.setPreferredSize panel d)
+        d' (.getPreferredSize panel)]
+    (when-not (= d d')
+      (println "Failed to setPreferredSize" d d')
+      (println "min and max: " (.getMinimumSize panel) (.getMaximumSize panel))))
   (.pack frame))
 
 (defn save-png

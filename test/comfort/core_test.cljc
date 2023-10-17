@@ -8,6 +8,12 @@
           (sorted-map)
           [[:a :b] [:a :c] [:b :d] [:b :e] [:c nil]]))))
 
+(deftest column-order
+  (is (= [:a :c :d :e :f :g]
+        (cc/column-order
+          [:a :B :b :C :c]
+          [:g :f :e :d :c :a]))))
+
 (deftest tabulate
   (is (= [["a" "b" "c" "d"]
           [1 2 3 nil]
