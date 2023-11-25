@@ -241,5 +241,7 @@
 #?(:clj
    (defn idef
      "Wraps intern for easier docstring."
-     [ns sym doc val]
-     (intern ns (with-meta sym {:doc doc}) val)))
+     ([ns sym doc val]
+      (intern ns (with-meta sym {:doc doc}) val))
+     ([qsym doc val]
+      (idef (-> qsym namespace symbol) (-> qsym name symbol) doc val))))
