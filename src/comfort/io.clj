@@ -5,14 +5,15 @@
             [clojure.pprint :as pprint]
             [comfort.core :as cc])
   (:import (java.io File BufferedReader)
-           (java.nio.file FileSystems Path)
+           (java.nio.file FileSystems Files Path)
+           (java.nio.file.attribute FileAttribute)
            (java.util.zip GZIPInputStream GZIPOutputStream)
            (java.nio.charset StandardCharsets)
            (java.io ByteArrayOutputStream)
            (java.util HexFormat)
            (java.awt.datatransfer DataFlavor StringSelection)))
 
-;; Files
+;; Files - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (defn get-extension
   "Return File or filename's extension (lower case)."
@@ -69,7 +70,7 @@
     (when (and (.startsWith absolute-child absolute-parent) (.isFile ret))
       ret)))
 
-;; Input
+;; Input - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (defn drop-bom
   "Remove byte order mark from newly-opened UTF-8 reader."
@@ -134,7 +135,7 @@
             (do (.write baos (int a))
                 (recur (rest s)))))))
 
-;; Output
+;; Output - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (defn no-overwrite [path func]
   (let [file (io/file path)]
@@ -177,6 +178,12 @@
    Use comfort.core/tabulate first if needed."
   [file rows] (no-overwrite file (fn [path] (write-csv path rows))))
 
+(defn temp-file
+  "Actually creates the file. Caller to manage deletion."
+  [path prefix suffix]
+  (.toFile (Files/createTempFile (-> path io/file .toPath)
+             prefix suffix (make-array FileAttribute 0))))
+
 (defn percent-encode ; stunningly absent from jre (URI unhelpful)
   ;; With thanks to http://www.java2s.com/example/java-utility-method/url-encode/uridecode-string-src-3973f.html
   ;; https://www.ietf.org/rfc/rfc3986.txt
@@ -194,7 +201,7 @@
             (.append sb (Integer/toHexString lower)))))
       (str sb)))
 
-;; Clipboard (after https://github.com/exupero/clipboard)
+;; Clipboard (after https://github.com/exupero/clipboard) - - - - - - - - - - - -
 
 (defn clipboard []
   (.getSystemClipboard (java.awt.Toolkit/getDefaultToolkit)))
