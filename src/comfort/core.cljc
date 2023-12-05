@@ -221,6 +221,28 @@
          (for [child (get-in graph [node-id :next])]
            [child (dag child graph proposed)]))))))
 
+#?(:clj
+   (defmacro with-resource ; like with-open
+     "bindings => [name init deinit ...]
+
+  Evaluates body in a try expression with names boud to the values
+  of the inits, and a finally clause that calls (deinit name) on
+  each name in reverse order."
+     [bindings & body]
+     (assert (vector? bindings))
+     (assert (zero? (mod (count bindings) 3)))
+     (cond
+       (= (count bindings) 0) `(do ~@body)
+       (symbol? (bindings 0)) `(let ~(subvec bindings 0 2) 
+                                 (try
+                                   (with-resource ~(subvec bindings 3) ~@body)
+                                   (finally
+                                     (when-let [deinit# ~(bindings 2)]
+                                       (deinit# ~(bindings 0))))))
+       :else (throw (IllegalArgumentException.
+                      "with-resource only allows Symbols in bindings"))))
+   )
+
 ;; Dev
 
 (defn debug
