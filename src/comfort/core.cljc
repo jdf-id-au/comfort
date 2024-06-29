@@ -25,7 +25,8 @@
                 matcher# (str name "-parts")]
             `(do (def ~(symbol re-name#) ~re)
                  (defn ~(symbol matcher#) [~'s]
-                   (zipmap ~parts (rest (re-matches ~re ~'s))))))))
+                   (some->> (next (re-matches ~re ~'s))
+                     (zipmap ~parts)))))))
 
 ;; Collections
 
@@ -225,7 +226,7 @@
    (defmacro with-resource ; like with-open
      "bindings => [name init deinit ...]
 
-  Evaluates body in a try expression with names boud to the values
+  Evaluates body in a try expression with names bound to the values
   of the inits, and a finally clause that calls (deinit name) on
   each name in reverse order."
      [bindings & body]
