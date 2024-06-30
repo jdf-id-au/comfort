@@ -5,7 +5,7 @@
   (:import (java.time LocalDate LocalDateTime)
            (java.time.temporal ChronoUnit)
            (java.time.format DateTimeFormatter)
-           (javax.swing JFrame JPanel JComponent)
+           (javax.swing JFrame JPanel JComponent JScrollPane)
            (java.awt
              Frame
              Graphics Graphics2D
@@ -23,12 +23,14 @@
 (defn painter
   "Example painter method."
   [^JComponent c ^Graphics2D g]
+  ;; Can (.setPreferredSize c (Dimension. <width> <height)) for JScrollPane's benefit.
   (.setBackground g Color/YELLOW)
   (.clearRect g 0 0 (/ (.getWidth c) 2) (.getHeight c)))
 
 (defn frame
-  "Make a frame which draws its panel using `painter`, which is stored
-   internally and is updatable using the returned fn."
+  "Make a frame which draws its panel using `painter` (within a scroll frame),
+  which is stored internally and is updatable using the returned fn.
+  Scrolling is unoptimised; fewer redraws when dragging thumb vs gesture/wheel."
   [painter]
   (let [painter* (atom painter)
         p (doto (proxy [JPanel] []
@@ -37,7 +39,7 @@
             (.setPreferredSize (Dimension. 800 600)))
         f (doto (JFrame.)
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
-            (.add p)
+            (.add (JScrollPane. p))
             (.pack)
             (.setLocationRelativeTo nil)
             #_(.addWindowStateListener
@@ -81,8 +83,9 @@
 (defn save-png
   [{:keys [panel]} filename]
   (let [p panel
-        w (.getWidth p)
-        h (.getHeight p)
+        d (.getPreferredSize p)
+        w (.getWidth d)
+        h (.getHeight d)
         bi (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
         g (.createGraphics bi)]
     (.setRenderingHint g RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
