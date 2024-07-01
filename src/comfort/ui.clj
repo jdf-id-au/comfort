@@ -66,7 +66,6 @@
                      (.drawImage g @buffer* 0 0 this)))
              (.setPreferredSize (.getPreferredSize p)))
         s (JScrollPane. bp)
-        d (.getPreferredSize s)
         hsb (doto (.getHorizontalScrollBar s) (.setUnitIncrement 3))
         vsb (doto (.getVerticalScrollBar s) (.setUnitIncrement 3))
         f (doto (JFrame.)
@@ -88,16 +87,14 @@
                 (componentMoved [self e])
                 (componentShown [self e])
                 (componentHidden [self e]))))
-        max-size (fn [scroll-pane] ; Seems unfair to have to do this
-                   (let [d (.getPreferredSize s)
-                         i (.getInsets f)]
-                     (Dimension. (.getWidth d) (+ (.getHeight d) (.-top i)))))]
+        max-size #(let [d (.getPreferredSize s)  ; Seems unfair to have to do this
+                        i (.getInsets f)]
+                    (Dimension. (.getWidth d) (+ (.getHeight d) (.-top i))))]
     (doto f
-      (.setMaximumSize (max-size s))
+      (.setMaximumSize (max-size))
       (.setLocationRelativeTo nil)
       (.setVisible true)
       (.setResizable true))
-    (println (.getWidth vsb))
     {:reset-painter
      (fn reset-painter [painter]
        (reset! painter* painter)
@@ -114,7 +111,7 @@
                          (.revalidate f)
                          (.repaint f)
                          (.pack f)
-                         (.setMaximumSize f (max-size s))))
+                         (.setMaximumSize f (max-size))))
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))
      }))
 
