@@ -18,7 +18,9 @@
              RenderingHints
              Dimension
              Color BasicStroke
-             Rectangle)
+             Rectangle
+             GridBagLayout GridBagConstraints
+             )
            (java.awt.event
              WindowStateListener
              WindowEvent
@@ -29,8 +31,6 @@
 (defn painter
   "Example painter method."
   [^JComponent c ^Graphics2D g]
-  ;; Can (.setPreferredSize c (Dimension. <width> <height)) then (.revalidate c)
-  ;; for JScrollPane's benefit. Also see `resize`.
   (.setBackground g Color/YELLOW)
   (.clearRect g 0 0 (/ (.getWidth c) 2) (.getHeight c)))
 
@@ -55,9 +55,9 @@
   (let [painter* (atom painter)
         p (doto (proxy [JPanel] []
                   (paint [g]
-                    #_(println "painting" (LocalDateTime/now))
                     (proxy-super paintComponent g)
                     (@painter* this ^Graphics2D g)))
+            ;; chicken and egg: can't really set within `painter` because it hasn't painted yet
             (.setPreferredSize (Dimension. 800 600)))
         buffer* (atom (buffer p))
         bp (doto (proxy [JPanel] []
@@ -65,13 +65,21 @@
                      (proxy-super paintComponent g)
                      (.drawImage g @buffer* 0 0 this)))
              (.setPreferredSize (.getPreferredSize p)))
-        s (JScrollPane. bp #_p)
-        ;;hsb (doto (.getHorizontalScrollBar s) (.setUnitIncrement 100))
-        ;;vsb (doto (.getVerticalScrollBar s) (.setUnitIncrement 100))
+        s (JScrollPane. bp)
+        hsb (doto (.getHorizontalScrollBar s) (.setUnitIncrement 3))
+        vsb (doto (.getVerticalScrollBar s) (.setUnitIncrement 3))
+        gbc (GridBagConstraints.)
+        _ (set! (. gbc fill) GridBagConstraints/BOTH)
+        _ (set! (. gbc anchor) GridBagConstraints/NORTHWEST)
+        _ (set! (. gbc weightx) 1)
+        _ (set! (. gbc weighty) 1)
         f (doto (JFrame.)
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
-            (.add s)
+            (.setLayout (GridBagLayout.))
+            (.add s gbc)
             (.pack)
+            (.setMaximumSize (.getPreferredSize s))
+            #_(.setMaximumSize (.getPreferredSize bp)) ; but this includes chrome... 
             (.setLocationRelativeTo nil)
             #_(.addWindowStateListener
               (reify WindowStateListener
@@ -93,36 +101,23 @@
     {:reset-painter
      (fn reset-painter [painter]
        (reset! painter* painter)
-       (reset! buffer* (buffer p)))
-     :repaint (fn repaint [] (reset! buffer* (buffer p)))
-     :frame f
-     :panel p}))
-
-(defn resize
-  "Reset panel's preferred size and resize window accordingly."
-  [{:keys [panel frame]} w h]
-  (let [d (Dimension. w h)
-        _ (.setPreferredSize panel d)
-        d' (.getPreferredSize panel)]
-    (when-not (= d d')
-      (println "Failed to setPreferredSize" d d')
-      (println "min and max: " (.getMinimumSize panel) (.getMaximumSize panel))))
-  (.revalidate panel) ; tell JScrollPane
-  (.pack frame)) ; resize window
-
-(defn save-png
-  [{:keys [panel]} filename]
-  (let [p panel
-        d (.getPreferredSize p)
-        w (.getWidth d)
-        h (.getHeight d)
-        bi (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
-        g (.createGraphics bi)]
-    (.setRenderingHint g RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
-    (.setBackground g Color/WHITE)
-    (.clearRect g 0 0 w h)
-    (.paintAll p g)
-    (ImageIO/write bi "png" (io/file filename))))
+       (reset! buffer* (buffer p))
+       (.revalidate bp)
+       (.repaint bp))
+     :repaint (fn repaint []
+                (reset! buffer* (buffer p))
+                (.repaint bp))
+     :resize (fn [w h] (let [d (Dimension. w h)]
+                         (.setPreferredSize p d)
+                         (.setPreferredSize bp d)
+                         (reset! buffer* (buffer p))
+                         (.revalidate f)
+                         (.repaint f)
+              #_           (.pack f)
+                         ;; FIXME scrollbars don't re-disappear at max size
+                #_         (.setMaximumSize f d)))
+     :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))
+     }))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol bound to
