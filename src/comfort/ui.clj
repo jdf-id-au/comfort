@@ -66,29 +66,19 @@
                      (.drawImage g @buffer* 0 0 this)))
              (.setPreferredSize (.getPreferredSize p)))
         s (JScrollPane. bp)
+        d (.getPreferredSize s)
         hsb (doto (.getHorizontalScrollBar s) (.setUnitIncrement 3))
         vsb (doto (.getVerticalScrollBar s) (.setUnitIncrement 3))
-        gbc (GridBagConstraints.)
-        _ (set! (. gbc fill) GridBagConstraints/BOTH)
-        _ (set! (. gbc anchor) GridBagConstraints/NORTHWEST)
-        _ (set! (. gbc weightx) 1)
-        _ (set! (. gbc weighty) 1)
         f (doto (JFrame.)
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
-            (.setLayout (GridBagLayout.))
-            (.add s gbc)
+            (.add s)
             (.pack)
-            (.setMaximumSize (.getPreferredSize s))
-            #_(.setMaximumSize (.getPreferredSize bp)) ; but this includes chrome... 
-            (.setLocationRelativeTo nil)
             #_(.addWindowStateListener
               (reify WindowStateListener
                 (windowStateChanged [this e]
                   (condp = e
                     WindowEvent/WINDOW_CLOSING
                     nil))))
-            (.setVisible true)
-            (.setResizable true)
             #_(.addComponentListener
               (reify ComponentListener
                 (componentResized [self e]
@@ -97,7 +87,17 @@
                   )
                 (componentMoved [self e])
                 (componentShown [self e])
-                (componentHidden [self e]))))]
+                (componentHidden [self e]))))
+        max-size (fn [scroll-pane] ; Seems unfair to have to do this
+                   (let [d (.getPreferredSize s)
+                         i (.getInsets f)]
+                     (Dimension. (.getWidth d) (+ (.getHeight d) (.-top i)))))]
+    (doto f
+      (.setMaximumSize (max-size s))
+      (.setLocationRelativeTo nil)
+      (.setVisible true)
+      (.setResizable true))
+    (println (.getWidth vsb))
     {:reset-painter
      (fn reset-painter [painter]
        (reset! painter* painter)
@@ -113,9 +113,8 @@
                          (reset! buffer* (buffer p))
                          (.revalidate f)
                          (.repaint f)
-              #_           (.pack f)
-                         ;; FIXME scrollbars don't re-disappear at max size
-                #_         (.setMaximumSize f d)))
+                         (.pack f)
+                         (.setMaximumSize f (max-size s))))
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))
      }))
 
