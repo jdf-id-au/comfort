@@ -8,19 +8,15 @@
            (javax.swing
              JFrame
              JPanel
-             JLabel
              JComponent
-             JScrollPane
-             ImageIcon)
+             JScrollPane)
            (java.awt
              Frame
              Graphics Graphics2D
              RenderingHints
              Dimension
              Color BasicStroke
-             Rectangle
-             GridBagLayout GridBagConstraints
-             )
+             Rectangle)
            (java.awt.event
              WindowStateListener
              WindowEvent
@@ -49,7 +45,7 @@
     bi))
 
 (defn frame
-  "Make a frame which draws its panel using `painter` (within a scroll frame),
+  "Make a frame which draws its panel using `painter` (buffered and within a scroll frame),
   which is stored internally and is updatable using the returned fn."
   [painter]
   (let [painter* (atom painter)
@@ -87,9 +83,11 @@
                 (componentMoved [self e])
                 (componentShown [self e])
                 (componentHidden [self e]))))
-        max-size #(let [d (.getPreferredSize s)  ; Seems unfair to have to do this
-                        i (.getInsets f)]
-                    (Dimension. (.getWidth d) (+ (.getHeight d) (.-top i))))]
+        max-size #(let [d (.getPreferredSize s) ; seems unfair to have to do this
+                        i (.getInsets f)] ; only top is non-zero on macOS
+                    (Dimension.
+                      (+ (.getWidth d) (.-left i) (.-right i))
+                      (+ (.getHeight d) (.-top i) (.-bottom i))))]
     (doto f
       (.setMaximumSize (max-size))
       (.setLocationRelativeTo nil)
@@ -112,6 +110,7 @@
                          (.repaint f)
                          (.pack f)
                          (.setMaximumSize f (max-size))))
+     :frame f
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))
      }))
 
@@ -120,17 +119,19 @@
    a var containing a fn. The frame redraws when the var is redefined."
   [painter]
   `(let [f# (frame ~painter)
-         k# (keyword (gensym))]
-     (println "watching" #'~painter "on" k#)
+         k# (keyword (gensym))
+         u# (fn ~'unwatch-painter ~'[]
+              ;;(println "unwatching" #'~painter "on" k#)
+              (remove-watch #'~painter k#))]
+     ;;(println "watching" #'~painter "on" k#)
      (add-watch #'~painter k#
        (fn ~'watch-painter ~'[k r o n]
          ((:reset-painter f#) ~painter)))
      (assoc f#
-       ;; TODO could return a :watch-painter
-       :unwatch-painter
-       (fn ~'unwatch-painter ~'[]
-         (println "unwatching" #'~painter "on" k#)
-         (remove-watch #'~painter k#)))))
+       ;;:unwatch-painter u#
+       :close (fn ~'close ~'[]
+                (u#)
+                (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING))))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
