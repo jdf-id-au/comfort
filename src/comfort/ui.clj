@@ -14,9 +14,8 @@
              Frame
              Graphics Graphics2D
              RenderingHints
-             Dimension
-             Color BasicStroke
-             Rectangle)
+             Point Dimension Rectangle
+             Color BasicStroke)
            (java.awt.event
              WindowStateListener
              WindowEvent
@@ -114,7 +113,7 @@
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))}))
 
 (defmacro with-graphics
-  "Push a copy of graphics context, do body and pop context."
+  "Push a copy of graphics context (must be `g`), do body and pop context."
   [& body]
   `(let [~'g (.create ~'g)] ; deliberately unhygienic!
      ~@body
@@ -139,6 +138,87 @@
         :close (fn ~'close ~'[]
                  (u#)
                  (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING)))))))
+
+(defprotocol Sized
+  "Integers"
+  (w [this])
+  (h [this]))
+
+(defprotocol Located
+  "Integers"
+  (x [this])
+  (y [this]))
+
+(defprotocol Change
+  "Integers"
+  (inset [this by])
+  (align [this within how]))
+
+(defrecord Margin [t r b l]
+  Sized
+  (w [_] (- r l))
+  (h [_] (- b t))
+  Located
+  (x [_] l)
+  (y [_] t))
+
+(defn -inset [o by]
+  (cond (int? by) (doto o
+                    (.translate by by)
+                    (.setSize (- (w o) (* 2 by)) (- (h o) (* 2 by)))))
+  (instance? Margin by) (doto o
+                          (.translate (:l by) (:t by))
+                          (.setSize (- (w o) (:l by) (:r by))
+                            (- (h o) (:t by) (:b by)))))
+
+(defn -align [o within how]
+  (case how
+    :top-right (inset within (Margin. 0 0 (- (h within) (h o))
+                               (- (w within) (w o))))))
+
+(extend-type Dimension
+  Sized
+  (w [this] (.width this))
+  (h [this] (.height this))
+  Change
+  (inset [this by] (-inset (Rectangle. (Point. 0 0) this) by))
+  (align [this within how] (-align this within how)))
+
+(extend-type Point
+  Sized
+  (w [_] 0)
+  (h [_] 0)
+  Located
+  (x [this] (.x this))
+  (y [this] (.y this)))
+
+(extend-type java.awt.geom.Rectangle2D$Float ; gross
+  Sized
+  (w [this] (int (.getWidth this)))
+  (h [this] (int (.getHeight this)))
+  Located
+  (x [this] (int (.getX this)))
+  (y [this] (int (.getY this)))
+  Change
+  (inset [this by] (-inset (Rectangle. this) by))
+  (align [this within how] (-align this within how)))
+
+(extend-type Rectangle
+  Sized
+  (w [this] (int (.getWidth this)))
+  (h [this] (int (.getHeight this)))
+  Located
+  (x [this] (int (.getX this)))
+  (y [this] (int (.getY this)))
+  Change
+  (inset [this by] (-inset (Rectangle. this) by))
+  (align [this within how] (-align this within how)))
+
+(defn string-bounds [g s]
+  (let [s (str s)
+        fm (.getFontMetrics g)
+        b (.getStringBounds fm s g)]
+    [s b]))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
