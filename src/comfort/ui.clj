@@ -47,14 +47,14 @@
 (defn frame
   "Make a frame which draws its panel using `painter` (buffered and within a scroll frame),
   which is stored internally and is updatable using the returned fn."
-  [painter]
+  [painter w h]
   (let [painter* (atom painter)
         p (doto (proxy [JPanel] []
                   (paint [g]
                     (proxy-super paintComponent g)
                     (@painter* this ^Graphics2D g)))
             ;; chicken and egg: can't really set within `painter` because it hasn't painted yet
-            (.setPreferredSize (Dimension. 800 600)))
+            (.setPreferredSize (Dimension. w h)))
         buffer* (atom (buffer p))
         bp (doto (proxy [JPanel] []
                    (paint [g]
@@ -69,20 +69,20 @@
             (.add s)
             (.pack)
             #_(.addWindowStateListener
-              (reify WindowStateListener
-                (windowStateChanged [this e]
-                  (condp = e
-                    WindowEvent/WINDOW_CLOSING
-                    nil))))
+                (reify WindowStateListener
+                  (windowStateChanged [this e]
+                    (condp = e
+                      WindowEvent/WINDOW_CLOSING
+                      nil))))
             #_(.addComponentListener
-              (reify ComponentListener
-                (componentResized [self e]
-                  #_(println "resized" e)
-                  #_(println (.getWidth (first (.getComponents (.getComponent e)))))
-                  )
-                (componentMoved [self e])
-                (componentShown [self e])
-                (componentHidden [self e]))))
+                (reify ComponentListener
+                  (componentResized [self e]
+                    #_(println "resized" e)
+                    #_(println (.getWidth (first (.getComponents (.getComponent e)))))
+                    )
+                  (componentMoved [self e])
+                  (componentShown [self e])
+                  (componentHidden [self e]))))
         max-size #(let [d (.getPreferredSize s) ; seems unfair to have to do this
                         i (.getInsets f)] ; only top is non-zero on macOS
                     (Dimension.
@@ -111,32 +111,31 @@
                          (.pack f)
                          (.setMaximumSize f (max-size))))
      :frame f
-     :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))
-     }))
+     :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))}))
 
 (defmacro repl-frame
-  "Make a frame which draws its panel using `painter`, which is a symbol bound to
-   a var containing a fn. The frame redraws when the var is redefined."
-  [painter]
-  `(let [f# (frame ~painter)
-         k# (keyword (gensym))
-         u# (fn ~'unwatch-painter ~'[]
-              ;;(println "unwatching" #'~painter "on" k#)
-              (remove-watch #'~painter k#))]
-     ;;(println "watching" #'~painter "on" k#)
-     (add-watch #'~painter k#
-       (fn ~'watch-painter ~'[k r o n]
-         ((:reset-painter f#) ~painter)))
-     (assoc f#
-       ;;:unwatch-painter u#
-       :close (fn ~'close ~'[]
-                (u#)
-                (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING))))))
+  "Make a frame which draws its panel using `painter`, which is a symbol naming
+  a var bound to a fn. The frame redraws when the var is rebound."
+  ([painter] `(repl-frame ~painter 800 600))
+  ([painter w h]
+   `(let [f# (frame ~painter ~w ~h)
+          k# (keyword (gensym))
+          u# (fn ~'unwatch-painter ~'[]
+               ;;(println "unwatching" #'~painter "on" k#)
+               (remove-watch #'~painter k#))]
+      ;;(println "watching" #'~painter "on" k#)
+      (add-watch #'~painter k#
+        (fn ~'watch-painter ~'[k r o n]
+          ((:reset-painter f#) ~painter)))
+      (assoc f#
+        ;;:unwatch-painter u#
+        :close (fn ~'close ~'[]
+                 (u#)
+                 (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING)))))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
   (def f (repl-frame painter))
-  ((:unwatch-painter f))
   (.getWatches #'painter)
   (doseq [[k w] (.getWatches #'painter)] (remove-watch #'painter k))
   (map str (ImageIO/getWriterFileSuffixes))
