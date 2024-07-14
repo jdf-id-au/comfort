@@ -113,6 +113,13 @@
      :frame f
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))}))
 
+(defmacro with-graphics
+  "Push a copy of graphics context, do body and pop context."
+  [& body]
+  `(let [~'g (.create ~'g)] ; deliberately unhygienic!
+     ~@body
+     (.dispose ~'g)))
+
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol naming
   a var bound to a fn. The frame redraws when the var is rebound."
