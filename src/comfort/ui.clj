@@ -15,7 +15,8 @@
              Graphics Graphics2D
              RenderingHints
              Point Dimension Rectangle
-             Color BasicStroke)
+             Color BasicStroke
+             Font)
            (java.awt.event
              WindowStateListener
              WindowEvent
@@ -294,9 +295,22 @@
         sw (.stringWidth fm s)
         [px py] [(x p) (y p)]
         [sx sy] (case how
+                  :tl [px (+ py fh)]
                   :tc [(- px (/ sw 2)) (+ py fh)]
-                  :cr [(- px sw) (+ py (/ fh 2))])]
-    (.drawString g s (int sx) (int sy))))
+                  :tr [(- px sw) (+ py fh)]
+                  :cl [px (+ py (/ fh 2))]
+                  :c  [(- px (/ sw 2)) (+ py (/ fh 2))]
+                  :cr [(- px sw) (+ py (/ fh 2))]
+                  :bl [px py]
+                  :bc [(- px (/ sw 2)) py]
+                  :br [(- px sw) py])]
+    (.drawString g s (int sx) (int sy))
+    (Rectangle. (int sx) (int (- sy fh)) (int sw) (int fh))))
+
+(defn font
+  ([g size] (font g size Font/PLAIN))
+  ([g size style] (font g size style (.getFamily (.getFont g))))
+  ([g size style family] (.setFont g (Font. family style size))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
