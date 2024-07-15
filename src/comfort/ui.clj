@@ -46,6 +46,7 @@
 (defn frame
   "Make a frame which draws its panel using `painter` (buffered and within a scroll frame),
   which is stored internally and is updatable using the returned fn."
+  ;; TODO another impl which just resizes JPanel to match resized JFrame
   [painter w h]
   (let [painter* (atom painter)
         p (doto (proxy [JPanel] []
@@ -139,20 +140,23 @@
                  (u#)
                  (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING)))))))
 
+;; API affordances ─────────────────────────────────────────────────────────────
+
 (defprotocol Sized
-  "Integers"
   (w [this])
   (h [this]))
 
 (defprotocol Located
-  "Integers"
   (x [this])
-  (y [this]))
+  (y [this])
+  (p [this which] "Named point e.g. :tl, :br"))
 
 (defprotocol Change
-  "Integers"
   (inset [this by])
   (align [this within how]))
+
+(defprotocol Transform
+  (translate [this by]))
 
 (defrecord Margin [t r b l]
   Sized
@@ -161,6 +165,18 @@
   Located
   (x [_] l)
   (y [_] t))
+
+(defn -point [o which]
+  (case which
+    :tl (Point. (x o) (y o))
+    :tc (Point. (+ (x o) (/ (w o) 2)) (y o))
+    :tr (Point. (+ (x o) (w o)) (y o))
+    :cl (Point. (x o) (+ (y o) (/ (h o) 2)))
+    :c  (Point. (+ (x o) (/ (w o) 2)) (+ (y o) (/ (h o) 2)))
+    :cr (Point. (+ (x o) (w o)) (+ (y o) (/ (h o) 2)))
+    :bl (Point. (x o) (+ (y o) (h o)))
+    :bc (Point. (+ (x o) (/ (w o) 2)) (+ (y o) (h o)))
+    :br (Point. (+ (x o) (w o)) (+ (y o) (h o)))))
 
 (defn -inset [o by]
   (cond (int? by) (doto o
@@ -172,53 +188,75 @@
                             (- (h o) (:t by) (:b by)))))
 
 (defn -align [o within how]
-  (case how
-    :top-right (inset within (Margin. 0 0 (- (h within) (h o))
-                               (- (w within) (w o))))))
+  (inset within
+    (case how
+      :tr (Margin. 0 0 (- (h within) (h o)) (- (w within) (w o)))
+      :r (Margin. (/ (- (h within) (h o)) 2) 0
+               (/ (+ (h within) (h o)) 2)
+               (- (w within) (w o))))))
+
+(extend-type Graphics
+  Transform
+  (translate [this by] (.translate this (x by) (y by))))
 
 (extend-type Dimension
   Sized
-  (w [this] (.width this))
-  (h [this] (.height this))
+  (w [this] (.getWidth this))
+  (h [this] (.getHeight this))
+  Located
+  (x [_] 0)
+  (y [_] 0)
+  (p [this which] (-point this which))
   Change
   (inset [this by] (-inset (Rectangle. (Point. 0 0) this) by))
   (align [this within how] (-align this within how)))
 
 (extend-type Point
-  Sized
-  (w [_] 0)
-  (h [_] 0)
   Located
-  (x [this] (.x this))
-  (y [this] (.y this)))
+  (x [this] (.getX this))
+  (y [this] (.getY this))
+  (p [this _] this))
 
-(extend-type java.awt.geom.Rectangle2D$Float ; gross
+(extend-type java.awt.geom.Rectangle2D$Float ; gross, why?
   Sized
-  (w [this] (int (.getWidth this)))
-  (h [this] (int (.getHeight this)))
+  (w [this] (.getWidth this))
+  (h [this] (.getHeight this))
   Located
-  (x [this] (int (.getX this)))
-  (y [this] (int (.getY this)))
+  (x [this] (.getX this))
+  (y [this] (.getY this))
+  (p [this which] (-point this which))
   Change
   (inset [this by] (-inset (Rectangle. this) by))
   (align [this within how] (-align this within how)))
 
 (extend-type Rectangle
   Sized
-  (w [this] (int (.getWidth this)))
-  (h [this] (int (.getHeight this)))
+  (w [this] (.getWidth this))
+  (h [this] (.getHeight this))
   Located
-  (x [this] (int (.getX this)))
-  (y [this] (int (.getY this)))
+  (x [this] (.getX this))
+  (y [this] (.getY this))
+  (p [this which] (-point this which))
   Change
   (inset [this by] (-inset (Rectangle. this) by))
   (align [this within how] (-align this within how)))
 
-(defn string-bounds [g s]
+(defn string-dimension
+  "Gives actual string width, and font height rather than actual string height."
+  [g s]
+  (let [fm (.getFontMetrics g)]
+    (Dimension. (.stringWidth fm (str s)) (.getHeight fm))))
+
+(defn anchor-string [g s p how]
   (let [s (str s)
         fm (.getFontMetrics g)
-        b (.getStringBounds fm s g)]
-    [s b]))
+        fh (.getHeight fm)
+        sw (.stringWidth fm s)
+        [px py] [(x p) (y p)]
+        [sx sy] (case how
+                  :tc [(- px (/ sw 2)) (+ py fh)]
+                  :cr [(- px sw) (+ py (/ fh 2))])]
+    (.drawString g s (int sx) (int sy))))
 
 (comment
   (macroexpand-1 '(repl-frame hmm))
