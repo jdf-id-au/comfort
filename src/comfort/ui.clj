@@ -43,7 +43,7 @@
     (.paint panel g)
     bi))
 
-(defn frame
+(defn scroll-frame
   "Make a frame which draws its panel using `painter` (buffered and within a scroll frame),
   which is stored internally and is updatable using the returned fn."
   ;; TODO another impl which just resizes JPanel to match resized JFrame
@@ -72,17 +72,8 @@
                 (reify WindowStateListener
                   (windowStateChanged [this e]
                     (condp = e
-                      WindowEvent/WINDOW_CLOSING
-                      nil))))
-            #_(.addComponentListener
-                (reify ComponentListener
-                  (componentResized [self e]
-                    #_(println "resized" e)
-                    #_(println (.getWidth (first (.getComponents (.getComponent e)))))
-                    )
-                  (componentMoved [self e])
-                  (componentShown [self e])
-                  (componentHidden [self e]))))
+                      WindowEvent/WINDOW_CLOSING ; NB wouldn't unwatch painter...
+                      nil)))))
         max-size #(let [d (.getPreferredSize s) ; seems unfair to have to do this
                         i (.getInsets f)] ; only top is non-zero on macOS
                     (Dimension.
@@ -113,12 +104,55 @@
      :frame f
      :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))}))
 
-(defmacro with-graphics
-  "Push a copy of graphics context (must be `g`), do body and pop context."
-  [& body]
-  `(let [~'g (.create ~'g)] ; deliberately unhygienic!
-     ~@body
-     (.dispose ~'g)))
+(defn frame
+  "Make a frame which draws its panel using `painter`,
+  which is stored internally and is updatable using the returned fn."
+  [painter w h]
+  (let [painter* (atom painter)
+        p (doto (proxy [JPanel] []
+                  (paint [g]
+                    (proxy-super paintComponent g)
+                    (@painter* this ^Graphics2D g)))
+            (.setPreferredSize (Dimension. w h)))
+        f (doto (JFrame.)
+            (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
+            (.add p)
+            (.pack)
+            #_(.addWindowStateListener
+                (reify WindowStateListener
+                  (windowStateChanged [this e]
+                    (condp = e
+                      WindowEvent/WINDOW_CLOSING ; NB wouldn't unwatch painter...
+                      nil))))
+            (.addComponentListener
+                (reify ComponentListener
+                  (componentResized [self e]
+                    ;;(println "resized" e (.getComponent e))
+                    ;;(println (.getWidth (first (.getComponents (.getComponent e)))))
+                    (.setPreferredSize p
+                      (.getSize (first (.getComponents (.getComponent e))))))
+                  (componentMoved [self e])
+                  (componentShown [self e])
+                  (componentHidden [self e]))))]
+    (doto f
+      (.setLocationRelativeTo nil)
+      (.setVisible true)
+      (.setResizable true))
+    {:reset-painter
+     (fn reset-painter [painter]
+       (reset! painter* painter)
+       (.revalidate p)
+       (.repaint p))
+     :repaint (fn repaint [] (.repaint p))
+     :resize (fn [w h] (let [d (Dimension. w h)]
+                         (.setPreferredSize p d)
+                         (.revalidate f)
+                         (.repaint f)
+                         (.pack f)))
+     :frame f
+     ;; TODO take size args
+     ;; TODO consider headless
+     :save-png (fn [filename] (ImageIO/write (buffer p) "png" (io/file filename)))}))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol naming
@@ -135,12 +169,18 @@
         (fn ~'watch-painter ~'[k r o n]
           ((:reset-painter f#) ~painter)))
       (assoc f#
-        ;;:unwatch-painter u#
         :close (fn ~'close ~'[]
                  (u#)
                  (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING)))))))
 
-;; API affordances ─────────────────────────────────────────────────────────────
+;; Graphics API affordances ────────────────────────────────────────────────────
+
+(defmacro with-graphics
+  "Push a copy of graphics context (must be `g`), do body and pop context."
+  [& body]
+  `(let [~'g (.create ~'g)] ; deliberately unhygienic!
+     ~@body
+     (.dispose ~'g)))
 
 (defprotocol Sized
   (w [this])
