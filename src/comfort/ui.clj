@@ -1,7 +1,9 @@
 (ns comfort.ui
   "Simple no-dependency Swing vis infra.
    No GUI interactivity yet..."
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+            [comfort.io :as ci]
+            [clojure.test :refer [with-test is]])
   (:import (java.time LocalDate LocalDateTime)
            (java.time.temporal ChronoUnit)
            (java.time.format DateTimeFormatter)
@@ -38,7 +40,7 @@
         h (.getHeight d)
         bi (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
         g (.createGraphics bi)]
-    (.setRenderingHint g RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
+    (.setRenderingHint g RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_OFF)
     (.setBackground g Color/WHITE)
     (.clearRect g 0 0 w h)
     (.paint panel g)
@@ -103,7 +105,9 @@
                          (.pack f)
                          (.setMaximumSize f (max-size))))
      :frame f
-     :save-png (fn [filename] (ImageIO/write @buffer* "png" (io/file filename)))}))
+     :save (fn [filename]
+             (let [ext (ci/get-extension filename)]
+               (ImageIO/write @buffer* ext (io/file filename))))}))
 
 (defn frame
   "Make a frame which draws its panel using `painter`,
@@ -128,8 +132,6 @@
             (.addComponentListener
                 (reify ComponentListener
                   (componentResized [self e]
-                    ;;(println "resized" e (.getComponent e))
-                    ;;(println (.getWidth (first (.getComponents (.getComponent e)))))
                     (.setPreferredSize p
                       (.getSize (first (.getComponents (.getComponent e))))))
                   (componentMoved [self e])
@@ -153,7 +155,9 @@
      :frame f
      ;; TODO take size args
      ;; TODO consider headless
-     :save-png (fn [filename] (ImageIO/write (buffer p) "png" (io/file filename)))}))
+     :save (fn [filename]
+             (let [ext (ci/get-extension filename)]
+               (ImageIO/write (buffer p) ext (io/file filename))))}))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol naming
@@ -206,6 +210,8 @@
   Located
   (x [_] l)
   (y [_] t))
+
+(def margin ->Margin)
 
 (defn -point [o which]
   (case which
@@ -291,6 +297,7 @@
 (defn anchor-string [g s p how]
   (let [s (str s)
         fm (.getFontMetrics g)
+        fa (.getAscent fm)
         fh (.getHeight fm)
         sw (.stringWidth fm s)
         [px py] [(x p) (y p)]
@@ -298,9 +305,9 @@
                   :tl [px (+ py fh)]
                   :tc [(- px (/ sw 2)) (+ py fh)]
                   :tr [(- px sw) (+ py fh)]
-                  :cl [px (+ py (/ fh 2))]
-                  :c  [(- px (/ sw 2)) (+ py (/ fh 2))]
-                  :cr [(- px sw) (+ py (/ fh 2))]
+                  :cl [px (+ py (/ fa 3))]
+                  :c  [(- px (/ sw 2)) (+ py (/ fa 3))]
+                  :cr [(- px sw) (+ py (/ fa 3))]
                   :bl [px py]
                   :bc [(- px (/ sw 2)) py]
                   :br [(- px sw) py])]
