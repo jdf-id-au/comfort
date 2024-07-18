@@ -2,8 +2,10 @@
   (:require [clojure.test :refer :all]
             [comfort.plot :as cp
              :refer [domain-fn range-fn]]))
+
 #_(do (ns-unmap *ns* 'domain-fn)
-      (ns-unmap *ns* 'range-fn))
+      (ns-unmap *ns* 'range-fn)) ; make reload-ns fresh
+
 (deftest scaling
   (is (= 300 (-> 3 ((domain-fn 0 10)) ((range-fn 0 1000)))))
   (is (= 13 (-> 3 ((domain-fn 0 10)) ((range-fn 10 20)))))
@@ -52,10 +54,12 @@
           ((range-fn [:a :b :c]))))))
 
 (deftest normalise
+  (is (= [1.0 -0.2 0.8]
+        (cp/normalise [10 -2 8])))
   (is (= [[1.0 0.2 0.8] [1.0 1.0 1.0]]
-        (cp/normalise [[10 2 80] [10 10 100]])))
+        (cp/normalise-all [[10 2 80] [10 10 100]])))
   (is (= [[1.0 -0.2 0.8] [1.0 1.0 1.0]]
-        (cp/normalise [[10 -2 80] [10 10 100]]))))
+        (cp/normalise-all [[10 -2 80] [10 10 100]]))))
 
 (deftest ceil-div
   (is (= 3.0 (cp/ceil-div 5 2))))
