@@ -1,5 +1,6 @@
 (ns comfort.plot
-  "Data manipulation to prepare plot. Not directly graphical."
+  "Data manipulation to prepare plot. Not directly graphical.
+  Time delta in seconds; nanos not currently supported."
   (:import (java.time LocalDate LocalTime LocalDateTime)
            (java.time.temporal ChronoUnit))
   (:refer-clojure :exclude [range]))
@@ -103,6 +104,7 @@
     (mapv (fn [row] (mapv (comp double /) row maxima)) rows)))
 
 (defn span
+  "Polymorphic [min max]."
   [vals]
   (let [{:syms [min max]} (-> vals first ops)]
     (reduce (fn [[mn mx] x]
@@ -110,7 +112,45 @@
                (if mx (max x mx) x)])
       nil vals)))
 
-;; Tick implementation cribbed from d3
+(defn range
+  "Polymorphic version of (some arities of) clojure.core/range."
+  ;;([])
+  ;;([end]) ; TODO what would start be for LocalDate etc?
+  ([start end]
+   (range start end 1))
+  ([start end step]
+   (let [{:syms [+ -]} (ops start)]
+     (for [n (clj-range (/ (- end start) step))]
+       (+ start (* n step))))))
+
+(defn band
+  [width x]
+  (-> x (quot width) (* width)))
+
+(defn ceil-div [a b]
+  (Math/ceil (/ a b)))
+
+(defn centred-points
+  [w h n]
+  (when (pos? n)
+    (let [aspect-ratio (/ w h)
+          rows (ceil-div n (* (Math/sqrt n) aspect-ratio))
+          cols (ceil-div n rows)
+          last-line (rem n cols)
+          cx (/ w 2) ; centre of area
+          cy (/ h 2)
+          dx (/ w cols) ; distance between points
+          dy (/ h rows)
+          d (min dx dy)
+          gw (* cols d) ; point group
+          gh (* rows d)
+          gx (- cx (/ gw 2))
+          gy (- cy (/ gh 2))]
+      (for [c (clj-range cols) r (clj-range rows)
+            :while (<= (+ (* r cols) (inc c)) n)]
+        [(+ gx (* (+ c 0.5) d)) (+ gy (* (+ r 0.5) d))]))))
+
+;; Tick implementation cribbed from d3 ─────────────────────────────────────────
 ;; https://github.com/d3/d3/blob/main/LICENSE
 
 (defn tick-spec
@@ -191,45 +231,24 @@
             (/ (Math/ceil (* start step)) step)
             (/ (Math/floor (* stop step)) step)))))))
 
-(defn range
-  ([])
-  ([end]) ; TODO what would start be for LocalDate etc?
-  ([start end]
-   (range start end 1))
-  ([start end step]
-   (let [{:syms [+ -]} (ops start)]
-     (for [n (clj-range (/ (- end start) step))]
-       (+ start (* n step))))))
+(defn ticks
+  "Polymorphic version of d3 ticks:
 
-(defn ticks [start stop count]
+  Returns an array of approximately count + 1 uniformly-spaced,
+  nicely-rounded values between start and stop (inclusive). Each value
+  is a power of ten multiplied by 1, 2 or 5."
+  [start stop count]
   (let [df (domain-fn start stop)
         rf (range-fn start stop)]
     (map rf (ticks-impl (df start) (df stop) count))))
 
-(defn nice [start stop count]
+(defn nice
+  "Polymorphic version of d3 nice: 
+
+  Returns a new interval [niceStart, niceStop] covering the given
+  interval [start, stop] and where niceStart and niceStop are
+  guaranteed to align with the corresponding tick step."
+  [start stop count]
   (let [df (domain-fn start stop)
         rf (range-fn start stop)]
     (map rf (nice-impl (df start) (df stop) count))))
-
-(defn ceil-div [a b]
-  (Math/ceil (/ a b)))
-
-(defn centred-points
-  [w h n]
-  (when (pos? n)
-    (let [aspect-ratio (/ w h)
-          rows (ceil-div n (* (Math/sqrt n) aspect-ratio))
-          cols (ceil-div n rows)
-          last-line (rem n cols)
-          cx (/ w 2) ; centre of area
-          cy (/ h 2)
-          dx (/ w cols) ; distance between points
-          dy (/ h rows)
-          d (min dx dy)
-          gw (* cols d) ; point group
-          gh (* rows d)
-          gx (- cx (/ gw 2))
-          gy (- cy (/ gh 2))]
-      (for [c (clj-range cols) r (clj-range rows)
-            :while (<= (+ (* r cols) (inc c)) n)]
-        [(+ gx (* (+ c 0.5) d)) (+ gy (* (+ r 0.5) d))]))))

@@ -63,7 +63,7 @@
 (defn update-if-present
   "Update key (if present in item) using function (which could be a map)."
   [item k f]
-  {:pre [item k f]}
+  {:pre [k f]}
   (if (contains? item k)
     (update item k f)
     item))
@@ -71,7 +71,7 @@
 (defn assoc-if-absent
   "Assoc key if absent in item."
   [item k v]
-  {:pre [item k v]}
+  {:pre [k v]}
   (if (contains? item k)
     item
     (assoc item k v)))
