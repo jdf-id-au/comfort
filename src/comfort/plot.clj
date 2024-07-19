@@ -146,7 +146,7 @@
             i2 (cond-> i2 (> (* i2 incr) stop) dec)]
         (return i1 i2 incr)))))
 
-(defn ticks [start stop count]
+(defn ticks-impl [start stop count]
   (cond
     (<= count 0) []
     (= start stop) [start]
@@ -168,12 +168,28 @@
 (defn tick-increment [start stop count]
   (nth (tick-spec start stop count) 2))
 
-(defn nice
-  ([start end])
-  ([start end {:keys [::nice]}]
-   (let [{:syms [+ -]} (ops start)
-         width (- end start)]
-     )))
+(defn tick-step-impl [start stop count]
+  (let [reverse? (< stop start)
+        incr (if reverse?
+               (tick-increment stop start count)
+               (tick-increment start stop count))]
+    (* (if reverse? -1 1)
+      (if (neg? incr) (/ 1 (- incr)) incr))))
+
+(defn nice-impl [start stop count]
+  (loop [prestep nil
+         start start
+         stop stop]
+    (let [step (tick-increment start stop count)]
+      (if (or (= prestep step) (zero? step)) ; TODO infinity check
+        [start stop]
+        (if (pos? step)
+          (recur step
+            (* (Math/floor (/ start step)) step)
+            (* (Math/ceil (/ stop step)) step))
+          (recur step
+            (/ (Math/ceil (* start step)) step)
+            (/ (Math/floor (* stop step)) step)))))))
 
 (defn range
   ([])
@@ -181,14 +197,19 @@
   ([start end]
    (range start end 1))
   ([start end step]
-   (let [{:syms [+ -]} (ops start)
-         [start end step]
-         (cond
-           (number? step) [start end step]
-           (= ::nice step) (nice start end)
-           (map? step) (nice start end step))]
+   (let [{:syms [+ -]} (ops start)]
      (for [n (clj-range (/ (- end start) step))]
        (+ start (* n step))))))
+
+(defn ticks [start stop count]
+  (let [df (domain-fn start stop)
+        rf (range-fn start stop)]
+    (map rf (ticks-impl (df start) (df stop) count))))
+
+(defn nice [start stop count]
+  (let [df (domain-fn start stop)
+        rf (range-fn start stop)]
+    (map rf (nice-impl (df start) (df stop) count))))
 
 (defn ceil-div [a b]
   (Math/ceil (/ a b)))
