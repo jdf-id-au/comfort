@@ -201,7 +201,7 @@
   (align [this within how]))
 
 (defprotocol Transform
-  (translate [this by]))
+  (translate! [this by]))
 
 (defrecord Margin [t r b l]
   Sized
@@ -244,7 +244,7 @@
 
 (extend-type Graphics
   Transform
-  (translate [this by] (.translate this (x by) (y by))))
+  (translate! [this by] (.translate this (x by) (y by))))
 
 (extend-type Dimension
   Sized

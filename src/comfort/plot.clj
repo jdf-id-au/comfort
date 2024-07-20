@@ -28,8 +28,12 @@
   (let [[f t] (map ldt->n [from to])]
     (fn ldtd [x] (/ (- (ldt->n x) f) (- t f)))))
 (defmethod domain-fn LocalTime [& [from to]]
-  (let [[f t] (map lt->n [from to])]
-    (fn ldtd [x] (/ (- (lt->n x) f) (- t f)))))
+  ;; Special case to allow full 24h domain (inclusive from exclusive to).
+  (let [add-day #(+ % (* 24 60 60))
+        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
+        [f t] (map lt->n [from to])
+        t (cond-> t (= f t) add-day)]
+    (fn ltd [x] (/ (- (lt->n x) f) (- t f)))))
 (defmethod domain-fn LocalDate [& [from to]]
   (let [[f t] (map ld->n [from to])]
     (fn ldd [x] (/ (- (ld->n x) f) (- t f)))))
@@ -48,8 +52,12 @@
   (let [[f t] (map ldt->n [from to])]
     (fn ldtr [x] (n->ldt (+ f (* (- t f) x))))))
 (defmethod range-fn LocalTime [& [from to]]
-  (let [[f t] (map lt->n [from to])]
-    (fn ldtr [x] (n->lt (+ f (* (- t f) x))))))
+  ;; Complementary special case (see domain-fn); n->lt wraps already.
+  (let [add-day #(+ % (* 24 60 60))
+        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
+        [f t] (map lt->n [from to])
+        t (cond-> t (= f t) add-day)]
+    (fn ltr [x] (n->lt (+ f (* (- t f) x))))))
 (defmethod range-fn LocalDate [& [from to]]
   (let [[f t] (map ld->n [from to])]
     (fn ldr [x] (n->ld (+ f (* (- t f) x))))))

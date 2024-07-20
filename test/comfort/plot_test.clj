@@ -31,6 +31,10 @@
           ((domain-fn #time/time "00:00:00" #time/time "12:00:00"))
           ((range-fn 0.0 1.0)))))
   (is (= 0.5
+        (-> #time/time "12:00:00"
+          ((domain-fn #time/time "00:00:00" #time/time "00:00:00"))
+          ((range-fn 0.0 1.0)))))
+  (is (= 0.5
         (-> #time/date-time "2020-01-01T12:00:00"
           ((domain-fn #time/date-time "2020-01-01T00:00:00"
              #time/date-time "2020-01-02T00:00:00"))
