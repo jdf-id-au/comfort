@@ -1,7 +1,7 @@
 (ns comfort.plot-test
   (:require [clojure.test :refer :all]
             [comfort.plot :as cp
-             :refer [domain-fn range-fn]])
+             :refer [domain-fn range-fn scale-fn]])
   (:refer-clojure :exclude [range]))
 
 #_(do (ns-unmap *ns* 'domain-fn)
@@ -35,6 +35,10 @@
           ((domain-fn #time/time "00:00:00" #time/time "00:00:00"))
           ((range-fn 0.0 1.0)))))
   (is (= 0.5
+        (-> #time/time "00:00:00"
+          ((domain-fn #time/time "12:00:00" #time/time "12:00:00"))
+          ((range-fn 0.0 1.0)))))
+  (is (= 0.5
         (-> #time/date-time "2020-01-01T12:00:00"
           ((domain-fn #time/date-time "2020-01-01T00:00:00"
              #time/date-time "2020-01-02T00:00:00"))
@@ -61,7 +65,8 @@
         (-> #time/date "2020-01-02"
           ((domain-fn #time/date "2020-01-01"
              #time/date "2020-01-03"))
-          ((range-fn [:a :b :c]))))))
+          ((range-fn [:a :b :c])))))
+  (is (= -30 ((scale-fn [0 10] [0 100]) -3))))
 
 (deftest normalise
   (is (= [1.0 -0.2 0.8]
@@ -76,7 +81,9 @@
           #time/date "2020-01-02"
           #time/date "2020-01-03"]
         (into []
-          (cp/range #time/date "2020-01-01" #time/date "2020-01-04" 1))))
+          (cp/range
+            #time/date "2020-01-01"
+            #time/date "2020-01-04" 1))))
   (is (= [#time/date-time "2020-01-01T00:00:00"
           #time/date-time "2020-01-01T01:00:00"
           #time/date-time "2020-01-01T02:00:00"]

@@ -1,6 +1,7 @@
 (ns comfort.plot
   "Data manipulation to prepare plot. Not directly graphical.
-  Time delta in seconds; nanos not currently supported."
+  Time delta in seconds; nanos not currently supported.
+  No support for timezones and therefore no DST handling!"
   (:import (java.time LocalDate LocalTime LocalDateTime)
            (java.time.temporal ChronoUnit))
   (:refer-clojure :exclude [range]))
@@ -16,59 +17,10 @@
 (def ldt->n #(.until ldt-epoch % ChronoUnit/SECONDS))
 (def n->ldt #(.plusSeconds ldt-epoch %))
 
-#_(do (ns-unmap *ns* 'domain-fn)
+#_(do (ns-unmap *ns* 'ops)
+      (ns-unmap *ns* 'domain-fn)
       (ns-unmap *ns* 'range-fn)) ; make reload-ns fresh
 
-;; https://en.wikipedia.org/wiki/Expression_problem
-(defmulti domain-fn
-  "Return fn converting values in range [from to] or [seq] to number
-  (could be ratio etc)."
-  (fn [& [from to]] (if to (type from) :seq)))
-(defmethod domain-fn LocalDateTime [& [from to]]
-  (let [[f t] (map ldt->n [from to])]
-    (fn ldtd [x] (/ (- (ldt->n x) f) (- t f)))))
-(defmethod domain-fn LocalTime [& [from to]]
-  ;; Special case to allow full 24h domain (inclusive from exclusive to).
-  (let [add-day #(+ % (* 24 60 60))
-        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
-        [f t] (map lt->n [from to])
-        t (cond-> t (= f t) add-day)]
-    (fn ltd [x] (/ (- (lt->n x) f) (- t f)))))
-(defmethod domain-fn LocalDate [& [from to]]
-  (let [[f t] (map ld->n [from to])]
-    (fn ldd [x] (/ (- (ld->n x) f) (- t f)))))
-(defmethod domain-fn :seq [& [coll]]
-  (let [lookup (zipmap coll (clj-range))
-        n (dec (count coll))]
-    (fn sd [x] (/ (lookup x) n))))
-(defmethod domain-fn :default [& [from to]]
-  (fn dd [x] (/ ( - x from) (- to from))))
-
-(defmulti range-fn
-  "Return fn converting numbers from domain-fn to values in range
-  [from to] or [seq]."
-  (fn [& [from to]] (if to (type from) :seq)))
-(defmethod range-fn LocalDateTime [& [from to]]
-  (let [[f t] (map ldt->n [from to])]
-    (fn ldtr [x] (n->ldt (+ f (* (- t f) x))))))
-(defmethod range-fn LocalTime [& [from to]]
-  ;; Complementary special case (see domain-fn); n->lt wraps already.
-  (let [add-day #(+ % (* 24 60 60))
-        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
-        [f t] (map lt->n [from to])
-        t (cond-> t (= f t) add-day)]
-    (fn ltr [x] (n->lt (+ f (* (- t f) x))))))
-(defmethod range-fn LocalDate [& [from to]]
-  (let [[f t] (map ld->n [from to])]
-    (fn ldr [x] (n->ld (+ f (* (- t f) x))))))
-(defmethod range-fn :seq [& [coll]]
-  (let [lookup (zipmap (clj-range) coll)
-        n (dec (count coll))]
-    (fn sr [x] (lookup (* x n)))))
-(defmethod range-fn :default [& [from to]]
-  (fn dr [x] (+ from (* (- to from) x))))
-
-#_(ns-unmap *ns* 'ops)
 (defmulti ops
   "Because defprotocol intentionally doesn't have default case."
   type)
@@ -79,6 +31,7 @@
    '- (fn [ldt x]
         (if (instance? LocalDateTime x)
           (.until x ldt ChronoUnit/SECONDS)
+          ;; not worth supporting Duration at the moment
           (.plusSeconds ldt (- x))))})
 (defmethod ops LocalTime [_]
   {'min #(reduce (fn ([]) ([a b] (if (neg? (.compareTo a b)) a b))) %&)
@@ -98,6 +51,84 @@
           (.plusDays ldt (- x))))})
 (defmethod ops :default [_]
   {'min min 'max max '+ + '- -})
+
+;; https://en.wikipedia.org/wiki/Expression_problem
+(defmulti domain-fn
+  "Return fn converting values in range [from to] or [seq] to number
+  (could be ratio etc). Args preserved in metadata."
+  (fn [& [from to]] (if to (type from) :seq)))
+(defmethod domain-fn LocalDateTime [& [from to]]
+  (let [[f t] (map ldt->n [from to])]
+    (with-meta
+      (fn ldtd [x] (/ (- (ldt->n x) f) (- t f)))
+      {:domain [from to]})))
+(defmethod domain-fn LocalTime [& [from to]]
+  ;; Special case to allow full 24h domain (inclusive from exclusive to).
+  (let [add-day #(+ % (* 24 60 60))
+        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
+        [f t] (map lt->n [from to])
+        t (cond-> t (= f t) add-day)]
+    (with-meta
+      (fn ltd [x] (/ (- (lt->n x) f) (- t f)))
+      {:domain [from to]})))
+(defmethod domain-fn LocalDate [& [from to]]
+  (let [[f t] (map ld->n [from to])]
+    (with-meta
+      (fn ldd [x] (/ (- (ld->n x) f) (- t f)))
+      {:domain [from to]})))
+(defmethod domain-fn :seq [& [coll]]
+  (let [lookup (zipmap coll (clj-range))
+        n (dec (count coll))]
+    (with-meta
+      (fn sd [x] (/ (lookup x) n))
+      {:domain-seq? true ; other types readable from :domain
+       :domain coll})))
+(defmethod domain-fn :default [& [from to]]
+  (with-meta
+    (fn dd [x] (/ ( - x from) (- to from)))
+    {:domain [from to]}))
+
+(defmulti range-fn
+  "Return fn converting numbers from domain-fn to values in range
+  [from to] or [seq]. Args preserved in metadata."
+  (fn [& [from to]] (if to (type from) :seq)))
+(defmethod range-fn LocalDateTime [& [from to]]
+  (let [[f t] (map ldt->n [from to])]
+    (with-meta
+      (fn ldtr [x] (n->ldt (+ f (* (- t f) x))))
+      {:range [from to]})))
+(defmethod range-fn LocalTime [& [from to]]
+  ;; Complementary special case (see domain-fn); n->lt wraps already.
+  (let [add-day #(+ % (* 24 60 60))
+        lt->n #(cond-> (lt->n %) (neg? (.compareTo % from)) add-day)
+        [f t] (map lt->n [from to])
+        t (cond-> t (= f t) add-day)]
+    (with-meta
+      (fn ltr [x] (n->lt (+ f (* (- t f) x))))
+      {:range [from to]})))
+(defmethod range-fn LocalDate [& [from to]]
+  (let [[f t] (map ld->n [from to])]
+    (with-meta 
+      (fn ldr [x] (n->ld (+ f (* (- t f) x))))
+      {:range [from to]})))
+(defmethod range-fn :seq [& [coll]]
+  (let [lookup (zipmap (clj-range) coll)
+        n (dec (count coll))]
+    (with-meta
+      (fn sr [x] (lookup (* x n)))
+      {:range-seq? true
+       :range coll})))
+(defmethod range-fn :default [& [from to]]
+  (with-meta
+    (fn dr [x] (+ from (* (- to from) x)))
+    {:range [from to]}))
+
+(defn scale-fn [domain range]
+  (let [df (apply domain-fn domain)
+        rf (apply range-fn range)]
+    (with-meta
+      (comp rf df)
+      (into (meta df) (meta rf)))))
 
 (defn normalise
   [vals]
@@ -121,42 +152,25 @@
       nil vals)))
 
 (defn range
-  "Polymorphic version of (some arities of) clojure.core/range."
-  ;;([])
-  ;;([end]) ; TODO what would start be for LocalDate etc?
-  ([start end]
-   (range start end 1))
+  "Lower arities are different to clojure.core/range."
+  ([scale-fn] (range scale-fn 1))
+  ([scale-fn step]
+   (let [{[start end] :domain} (meta scale-fn)]
+     (range start end step)))
   ([start end step]
    (let [{:syms [+ -]} (ops start)]
      (for [n (clj-range (/ (- end start) step))]
        (+ start (* n step))))))
 
+(defn range-step
+  [scale-fn step]
+  ;; TODO accommodate seq styles
+  (let [[a b] (range scale-fn step)]
+    (- (scale-fn b) (scale-fn a))))
+
 (defn band
   [width x]
   (-> x (quot width) (* width)))
-
-(defn ceil-div [a b]
-  (Math/ceil (/ a b)))
-
-(defn centred-points
-  [w h n]
-  (when (pos? n)
-    (let [aspect-ratio (/ w h)
-          rows (ceil-div n (* (Math/sqrt n) aspect-ratio))
-          cols (ceil-div n rows)
-          last-line (rem n cols)
-          cx (/ w 2) ; centre of area
-          cy (/ h 2)
-          dx (/ w cols) ; distance between points
-          dy (/ h rows)
-          d (min dx dy)
-          gw (* cols d) ; point group
-          gh (* rows d)
-          gx (- cx (/ gw 2))
-          gy (- cy (/ gh 2))]
-      (for [c (clj-range cols) r (clj-range rows)
-            :while (<= (+ (* r cols) (inc c)) n)]
-        [(+ gx (* (+ c 0.5) d)) (+ gy (* (+ r 0.5) d))]))))
 
 ;; Tick implementation cribbed from d3 ─────────────────────────────────────────
 ;; https://github.com/d3/d3/blob/main/LICENSE
@@ -256,7 +270,33 @@
   Returns a new interval [niceStart, niceStop] covering the given
   interval [start, stop] and where niceStart and niceStop are
   guaranteed to align with the corresponding tick step."
+  ;; TODO make "nice" for temporal ranges?
   [start stop count]
   (let [df (domain-fn start stop)
         rf (range-fn start stop)]
     (map rf (nice-impl (df start) (df stop) count))))
+
+;; ─────────────────────────────────────────────────────────────────────────────
+
+(defn ceil-div [a b]
+  (Math/ceil (/ a b)))
+
+(defn centred-points
+  [w h n]
+  (when (pos? n)
+    (let [aspect-ratio (/ w h)
+          rows (ceil-div n (* (Math/sqrt n) aspect-ratio))
+          cols (ceil-div n rows)
+          last-line (rem n cols)
+          cx (/ w 2) ; centre of area
+          cy (/ h 2)
+          dx (/ w cols) ; distance between points
+          dy (/ h rows)
+          d (min dx dy)
+          gw (* cols d) ; point group
+          gh (* rows d)
+          gx (- cx (/ gw 2))
+          gy (- cy (/ gh 2))]
+      (for [c (clj-range cols) r (clj-range rows)
+            :while (<= (+ (* r cols) (inc c)) n)]
+        [(+ gx (* (+ c 0.5) d)) (+ gy (* (+ r 0.5) d))]))))
