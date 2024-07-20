@@ -8,6 +8,9 @@
 
 (def clj-range clojure.core/range)
 
+;; Does feel like reinventing OOP a bit...
+
+;; TOOD could fold these into `ops` but no immediately obvious benefit
 (def ldt-epoch "Oddly missing from JDK vs LocalDate/EPOCH"
   (LocalDateTime/of LocalDate/EPOCH LocalTime/MIDNIGHT))
 (def ld->n #(.until LocalDate/EPOCH % ChronoUnit/DAYS))
@@ -128,7 +131,9 @@
         rf (apply range-fn range)]
     (with-meta
       (comp rf df)
-      (into (meta df) (meta rf)))))
+      (merge {:domain-fn df
+              :range-fn rf}
+        (meta df) (meta rf)))))
 
 (defn normalise
   [vals]
@@ -152,7 +157,8 @@
       nil vals)))
 
 (defn range
-  "Lower arities are different to clojure.core/range."
+  "Lower arities are different to clojure.core/range.
+  Also see `ticks` and `nice`."
   ([scale-fn] (range scale-fn 1))
   ([scale-fn step]
    (let [{[start end] :domain} (meta scale-fn)]
@@ -259,10 +265,13 @@
   Returns an array of approximately count + 1 uniformly-spaced,
   nicely-rounded values between start and stop (inclusive). Each value
   is a power of ten multiplied by 1, 2 or 5."
-  [start stop count]
-  (let [df (domain-fn start stop)
-        rf (range-fn start stop)]
-    (map rf (ticks-impl (df start) (df stop) count))))
+  ([scale-fn count]
+   (let [{[start stop] :domain} (meta scale-fn)]
+     (ticks start stop count)))
+  ([start stop count]
+   (let [df (domain-fn start stop)
+         rf (range-fn start stop)] ; NB same as domain
+     (map rf (ticks-impl (df start) (df stop) count)))))
 
 (defn nice
   "Polymorphic version of d3 nice: 
@@ -271,10 +280,13 @@
   interval [start, stop] and where niceStart and niceStop are
   guaranteed to align with the corresponding tick step."
   ;; TODO make "nice" for temporal ranges?
-  [start stop count]
-  (let [df (domain-fn start stop)
-        rf (range-fn start stop)]
-    (map rf (nice-impl (df start) (df stop) count))))
+  ([scale-fn count]
+   (let [{[start stop] :domain} (meta scale-fn)]
+     (nice start stop count)))
+  ([start stop count]
+   (let [df (domain-fn start stop)
+         rf (range-fn start stop)]
+     (map rf (nice-impl (df start) (df stop) count)))))
 
 ;; ─────────────────────────────────────────────────────────────────────────────
 

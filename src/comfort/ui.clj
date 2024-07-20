@@ -117,7 +117,11 @@
         p (doto (proxy [JPanel] []
                   (paint [g]
                     (proxy-super paintComponent g)
-                    (@painter* this ^Graphics2D g)))
+                    (try
+                      (@painter* this ^Graphics2D g)
+                      (catch Exception e
+                        (println "Caught exception in painter fn.")
+                        (println e)))))
             (.setPreferredSize (Dimension. w h)))
         f (doto (JFrame.)
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
