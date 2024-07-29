@@ -193,26 +193,23 @@
     (update-in [from-id :next] conj to-id)
     (update-in [to-id :prev] conj from-id)))
 
-(defn graph-by
-  "Return fn which can be used to reduce colls of nodes into map of {node-id {:prev #{node-id} :next #{node-id}}}.
-   from-id = to-id only add node-id, not an edge.
-   edge-fn needs to return [from-id to-id]"
-  [edge-fn]
-  (fn [graph node]
-    (let [[from-id to-id] (edge-fn node)]
-      (if (and from-id to-id)
-        (if (= from-id to-id) ; strictly this is a cycle, but is elided
-          (add-node-id graph from-id)
-          (add-edge graph from-id to-id))
-        (do
-          (println "Skipped node (need both from-id and to-id):" node)
-          graph)))))
+(defn graph
+  "Use to reduce colls of nodes into map of {node-id {:prev #{node-id} :next #{node-id}}}.
+   from-id = to-id only adds node-id, not an edge. "
+  [graph [from-id to-id :as node]]
+  (if (and from-id to-id)
+    (if (= from-id to-id) ; strictly this is a cycle, but is elided
+      (add-node-id graph from-id)
+      (add-edge graph from-id to-id))
+    (do
+      (println "Skipped node (need both from-id and to-id):" node)
+      graph)))
 
-(defn dag
+(defn dag-impl
   "Cycle at root will return empty map." ; FIXME?
   ([graph] (into {} (for [[node-id {:keys [prev]}] graph
                           :when (empty? prev)]
-                      [node-id (dag node-id graph '())])))
+                      [node-id (dag-impl node-id graph '())])))
   ([node-id graph path]
    (let [seen (set path)
          proposed (conj path node-id)]
@@ -220,8 +217,11 @@
        ::cycle-detected
        (some->>
          (for [child (get-in graph [node-id :next])]
-           [child (dag child graph proposed)])
+           [child (dag-impl child graph proposed)])
          seq (into {}))))))
+
+(defn dag [nodes]
+  (->> nodes (reduce graph {}) dag-impl))
 
 #?(:clj
    (defmacro with-resource ; like with-open TODO clj-kondo hooks
