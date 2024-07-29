@@ -86,7 +86,7 @@
   (empty? (apply set/intersection (map (comp set keys) ms))))
 
 (defn without-nil-vals
-  "Not recursive."
+  
   [m]
   (into {} (remove (comp nil? second)) m))
 
@@ -218,17 +218,19 @@
          proposed (conj path node-id)]
      (if (seen node-id)
        ::cycle-detected
-       (into {}
+       (some->>
          (for [child (get-in graph [node-id :next])]
-           [child (dag child graph proposed)]))))))
+           [child (dag child graph proposed)])
+         seq (into {}))))))
 
 #?(:clj
-   (defmacro with-resource ; like with-open
+   (defmacro with-resource ; like with-open TODO clj-kondo hooks
      "bindings => [name init deinit ...]
 
   Evaluates body in a try expression with names bound to the values
   of the inits, and a finally clause that calls (deinit name) on
   each name in reverse order."
+     {:clj-kondo/ignore [:unresolved-symbol]}
      [bindings & body]
      (assert (vector? bindings))
      (assert (zero? (mod (count bindings) 3)))

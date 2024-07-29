@@ -46,10 +46,9 @@
     (.paint panel g)
     bi))
 
-(defn scroll-frame
+#_(defn scroll-frame
   "Make a frame which draws its panel using `painter` (buffered and within a scroll frame),
   which is stored internally and is updatable using the returned fn."
-  ;; TODO another impl which just resizes JPanel to match resized JFrame
   [painter w h]
   (let [painter* (atom painter)
         p (doto (proxy [JPanel] []
@@ -114,10 +113,11 @@
   which is stored internally and is updatable using the returned fn."
   [painter w h]
   (let [painter* (atom painter)
+        methods* (atom nil)
         p (doto (proxy [JPanel] []
                   (paint [g]
                     (proxy-super paintComponent g)
-                    (try
+                    (try ; TODO also time painter to decide about redraw frequency
                       (@painter* this ^Graphics2D g)
                       (catch Exception e
                         (println "Caught exception in painter fn.")
@@ -127,12 +127,15 @@
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
             (.add p)
             (.pack)
-            #_(.addWindowStateListener
-                (reify WindowStateListener
-                  (windowStateChanged [this e]
-                    (condp = e
-                      WindowEvent/WINDOW_CLOSING ; NB wouldn't unwatch painter...
-                      nil))))
+            (.addWindowStateListener
+              (reify WindowStateListener
+                (windowStateChanged [this e]
+                  ;; FIXME not firing, when it does could remove (u#) in macro
+                  (println "windowStateChanged" this e)
+                  (condp = e
+                    WindowEvent/WINDOW_CLOSING
+                    ((:unwatch-painter @methods*))
+                    nil))))
             (.addComponentListener
                 (reify ComponentListener
                   (componentResized [self e]
@@ -145,23 +148,25 @@
       (.setLocationRelativeTo nil)
       (.setVisible true)
       (.setResizable true))
-    {:reset-painter
-     (fn reset-painter [painter]
-       (reset! painter* painter)
-       (.revalidate p)
-       (.repaint p))
-     :repaint (fn repaint [] (.repaint p))
-     :resize (fn [w h] (let [d (Dimension. w h)]
-                         (.setPreferredSize p d)
-                         (.revalidate f)
-                         (.repaint f)
-                         (.pack f)))
-     :frame f
-     ;; TODO take size args
-     ;; TODO consider headless
-     :save (fn [filename]
-             (let [ext (ci/get-extension filename)]
-               (ImageIO/write (buffer p) ext (io/file filename))))}))
+    (reset! methods*
+      {:reset-painter
+       (fn reset-painter [painter]
+         (reset! painter* painter)
+         (.revalidate p)
+         (.repaint p))
+       :repaint (fn repaint [] (.repaint p))
+       :resize (fn [w h] (let [d (Dimension. w h)]
+                           (.setPreferredSize p d)
+                           (.revalidate f)
+                           (.repaint f)
+                           (.pack f)))
+       :frame f
+       ;; TODO take size args, maybe flag to match hidpi
+       ;; TODO consider headless
+       :save (fn [filename]
+               (let [ext (ci/get-extension filename)]
+                 (ImageIO/write (buffer p) ext (io/file filename))))})
+    methods*))
 
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol naming
@@ -170,17 +175,19 @@
   ([painter w h]
    `(let [f# (frame ~painter ~w ~h)
           k# (keyword (gensym))
-          u# (fn ~'unwatch-painter ~'[]
-               ;;(println "unwatching" #'~painter "on" k#)
+          u# (fn ~'unwatch-painter []
+               (println "unwatching" #'~painter "on" k#)
                (remove-watch #'~painter k#))]
-      ;;(println "watching" #'~painter "on" k#)
+      (println "watching" #'~painter "on" k#)
       (add-watch #'~painter k#
         (fn ~'watch-painter ~'[k r o n]
-          ((:reset-painter f#) ~painter)))
-      (assoc f#
-        :close (fn ~'close ~'[]
+          ((:reset-painter @f#) ~painter)))
+      (swap! f# assoc
+        :unwatch-painter u#
+        :close (fn ~'close []
                  (u#)
-                 (.dispatchEvent (:frame f#) (WindowEvent. (:frame f#) WindowEvent/WINDOW_CLOSING)))))))
+                 (.dispatchEvent (:frame @f#)
+                   (WindowEvent. (:frame @f#) WindowEvent/WINDOW_CLOSING)))))))
 
 ;; Graphics API affordances ────────────────────────────────────────────────────
 

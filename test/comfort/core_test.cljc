@@ -42,9 +42,9 @@
                   4 {:next #{} :prev #{1 2}}
                   5 {:next #{} :prev #{2}}}))
     (is (= (cc/dag graph)
-          {0 {1 {2 {4 {} 5 {}}
+          {0 {1 {2 {4 nil 5 nil}
                  3 {1 ::cc/cycle-detected}
-                 4 {}}}}))))
+                 4 nil}}}))))
 
 (deftest hierarchicalise
   (is (= [[:a :A
