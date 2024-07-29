@@ -223,6 +223,20 @@
 (defn dag [nodes]
   (->> nodes (reduce graph {}) dag-impl))
 
+(defn deps-order [nodes]
+  (let [dag (dag nodes)
+        queue (loop [[k & r :as queue] nil
+                     [[dk dv] & dr :as deps] dag]
+                (if dv
+                  (case dv
+                    ::cycle-detected (throw (ex-info "cycle detected"
+                                              {:at dk}))
+                    (recur (conj queue dk) (concat dv dr)))
+                  (if dk
+                    (recur (conj queue dk) dr)
+                    queue)))]
+    (distinct queue)))
+
 #?(:clj
    (defmacro with-resource ; like with-open TODO clj-kondo hooks
      "bindings => [name init deinit ...]

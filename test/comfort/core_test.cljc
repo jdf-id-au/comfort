@@ -33,6 +33,7 @@
 
 (deftest dag
   (let [nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [3 1] [2 5]]
+        acyclic-nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [2 5] [1 6]]
         graph (->> nodes (reduce cc/graph {}))]
     (is (= graph {0 {:next #{1} :prev #{}}
                   1 {:next #{2 3 4} :prev #{0 3}}
@@ -43,7 +44,14 @@
     (is (= (cc/dag-impl graph)
           {0 {1 {2 {4 nil 5 nil}
                  3 {1 ::cc/cycle-detected}
-                 4 nil}}}))))
+                 4 nil}}}))
+    (is (= (cc/dag acyclic-nodes)
+          {0 {1 {2 {4 nil 5 nil}
+                 3 nil
+                 4 nil
+                 6 nil}}}))
+    (is (= (cc/deps-order acyclic-nodes)
+          '(5 4 2 3 6 1 0)))))
 
 (deftest hierarchicalise
   (is (= [[:a :A
