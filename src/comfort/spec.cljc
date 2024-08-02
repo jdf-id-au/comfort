@@ -3,13 +3,13 @@
                        [clojure.java.io :as io]]
                 :cljs [[cljs.spec.alpha :as s]])
             [comfort.gen :as gen]
-            [comfort.core :as c]
+            [comfort.core :as cc]
             [clojure.string :as str]))
 
-(c/ngre URI ; "Match http and https URIs. Any #fragment and ?query remain part of path."
-        [:scheme :host :port :path] #"^(https?)://([^/:]*):?(\d+)?(/.*)?")
-(c/ngre Email [:username :host] #"(^\S+)@(\S+\.\S{2,})")
-(c/ngre NamedEmail [:name :username :host] #"^([^<>]+) <(\S+)@(\S+\.\S{2,})>")
+(cc/defre URI ; "Match http and https URIs. Any #fragment and ?query remain part of path."
+  [scheme host port path] #"^(https?)://([^/:]*):?(\d+)?(/.*)?")
+(cc/defre Email [username host] #"(^\S+)@(\S+\.\S{2,})")
+(cc/defre NamedEmail [name username host] #"^([^<>]+) <(\S+)@(\S+\.\S{2,})>")
 
 (s/def ::non-blank-string (s/and string? (comp not clojure.string/blank?)))
 ; ::word allows but doesn't gen containing spaces

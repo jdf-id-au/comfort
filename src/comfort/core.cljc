@@ -4,8 +4,7 @@
             [clojure.string :as str])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
-;; Text
-
+;; ──────────────────────────────────────────────────────────────────────── Text
 (defn optional-str
   "Represent both blank string and nil as nil (and therefore null in database).
    Also trims string input."
@@ -17,19 +16,24 @@
                         :else (str (subs comment 0 clip) "...")))
   ([comment] (briefly 20 comment)))
 
-#?(:clj (defmacro ngre
-          "Named group regular expression: define both a regular expression <name>
-           and a function <name>-parts calling re-matches which names the found groups."
+#?(:clj (defmacro defre
+          "Named group regular expression: define a function `<name>-parts` calling re-matches which names the found groups using `parts`.
+  Also define a var `<name>` containing `re`."
+          ;; for more sophisticated options, see:
+          ;; https://stackoverflow.com/questions/25892277/clojure-regex-named-groups
+          ;; TODO cljs impl
+          {:clj-kondo/ignore [:unresolved-symbol]}
           [name parts re]
-          (let [re-name# name
-                matcher# (str name "-parts")]
-            `(do (def ~(symbol re-name#) ~re)
-                 (defn ~(symbol matcher#) [~'s]
-                   (some->> (next (re-matches ~re ~'s))
-                     (zipmap ~parts)))))))
+          (assert (symbol? name))
+          (assert (vector? parts))
+          (assert (instance? java.util.regex.Pattern re))
+          `(do
+             (def ~name ~re)
+             (defn ~(symbol (str name "-parts")) [~'s]
+               (some->> ~'s (re-matches ~re) next
+                 (zipmap ~(mapv keyword parts)))))))
 
-;; Collections
-
+;; ───────────────────────────────────────────────────────────────── Collections
 (defn mapmap
   "Map f over each coll within c." ; TODO transducer version (think about it)
   [f c]
@@ -48,8 +52,7 @@
   ([keyfn valfn into-coll]
    (fn [acc x] (update acc (keyfn x) (fnil #(conj % (valfn x)) into-coll)))))
 
-;; Maps
-
+;; ──────────────────────────────────────────────────────────────────────── Maps
 (defn group-by-key
   "Like `group-by`, but groups map values according to a function of their key."
   [f m]
@@ -86,7 +89,6 @@
   (empty? (apply set/intersection (map (comp set keys) ms))))
 
 (defn without-nil-vals
-  
   [m]
   (into {} (remove (comp nil? second)) m))
 
@@ -106,8 +108,7 @@
   (let [records (map #(apply factory %) values)]
     (apply array-map (interleave (map :id records) records))))
 
-;; Tables
-
+;; ────────────────────────────────────────────────────────────────────── Tables
 (defn column-order
   [preferred actual]
   (let [specified (set preferred)
@@ -143,8 +144,7 @@
          mapify (fn [row] (apply array-map (interleave fieldnames row)))]
      (map mapify rows))))
 
-;; Graphs
-
+;; ────────────────────────────────────────────────────────────────────── Graphs
 (defn hierarchicalise
   "Reducer of seq of [key value]
    into []:
@@ -223,7 +223,10 @@
 (defn dag [nodes]
   (->> nodes (reduce graph {}) dag-impl))
 
-(defn deps-order [nodes]
+(defn deps-order
+  "List ids from nodes of [from-id to-id] such that no id depends
+  on one which appears later in list."
+  [nodes]
   (let [dag (dag nodes)
         queue (loop [[k & r :as queue] nil
                      [[dk dv] & dr :as deps] dag]
@@ -260,8 +263,7 @@
                       "with-resource only allows Symbols in bindings"))))
    )
 
-;; Dev
-
+;; ───────────────────────────────────────────────────────────────────────── Dev
 (defn debug
   "Tap and pass through value, optionally with message and optionally running function on tapped value.
    Use `clojure.core/add-tap` to see values."

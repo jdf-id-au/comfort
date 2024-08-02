@@ -2,12 +2,22 @@
   (:require [clojure.test :refer :all]
             [comfort.core :as cc]))
 
+;; ──────────────────────────────────────────────────────────────────────── Text
+(deftest ngre
+  #?(:clj
+     (do (cc/defre ln [letters numbers] #"([a-zA-Z]*)([0-9]*)")
+         (is (= #"([a-z][A-Z]*)([0-9]*)" ln))
+         (is (= {:letters "abcd" :numbers "0123"}
+               (ln-parts "abcd0123"))))))
+
+;; ───────────────────────────────────────────────────────────────── Collections
 (deftest collate-by
   (is (= {:a #{:b :c}, :b #{:d :e}, :c #{nil}}
         (reduce (cc/collate-by first second)
           (sorted-map)
           [[:a :b] [:a :c] [:b :d] [:b :e] [:c nil]]))))
 
+;; ────────────────────────────────────────────────────────────────────── Tables
 (deftest column-order
   (is (= [:a :c :d :e :f :g]
         (cc/column-order
@@ -31,6 +41,7 @@
                         [1 2 3]
                         [4 5 6]]))))
 
+;; ────────────────────────────────────────────────────────────────────── Graphs
 (deftest dag
   (let [nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [3 1] [2 5]]
         acyclic-nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [2 5] [1 6]]
