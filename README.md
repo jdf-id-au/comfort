@@ -10,7 +10,7 @@ Collection of tiny things which make life easier in Clojure and ClojureScript. A
 
 ## Functionality
 
-- [`comfort.core`](blob/master/src/comfort/core.cljc) incl
+- [`comfort.core`](src/comfort/core.cljc) incl
   - `defre` simplistic regular expression group naming
   - `collate-by` (like `group-by` but less voluminous)
   - `update-if-present`, `assoc-if-absent`, `redact-keys`
@@ -18,21 +18,21 @@ Collection of tiny things which make life easier in Clojure and ClojureScript. A
   - `hierarchicalise`
   - `dag`, `deps-order`
   - `with-resources`
-- [`comfort.gen`](blob/master/src/comfort/gen.cljc) clojure.spec conveniences incl
+- [`comfort.gen`](src/comfort/gen.cljc) clojure.spec conveniences incl
   - `salad` word salad generator
-- [`comfort.io`](blob/master/src/comfort/io.cljc) incl
+- [`comfort.io`](src/comfort/io.cljc) incl
   - `pprint-with-meta`
   - `safe-spit`
   - `percent-encode`
   - `copy!` and `paste` with system clipboard
-- [`comfort.plot`](blob/master/src/comfort/plot.cljc) data manipulation in the spirit of d3.js, incl polymorphic
+- [`comfort.plot`](src/comfort/plot.cljc) data manipulation in the spirit of d3.js, incl polymorphic
   - `(scale [domain-from domain-to] [range-from range-to])`
   - `ticks`, `nice`
-- [`comfort.system`](blob/master/src/comfort/system.cljc) incl
+- [`comfort.system`](src/comfort/system.cljc) incl
   - `make-help` repl documentation displayer
   - `mem-report`
   - `doseq-timed`
-- [`comfort.ui`](blob/master/src/comfort/ui.cljc) Swing-based REPL-friendly 2d painting incl
+- [`comfort.ui`](src/comfort/ui.cljc) Swing-based REPL-friendly 2d painting incl
   - `repl-frame`
   - `inset`, `align`, `anchor-string`
 
