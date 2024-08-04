@@ -10,6 +10,11 @@
          (is (= {:letters "abcd" :numbers "0123"}
                (ln-parts "abcd0123"))))))
 
+(deftest kw
+  (is (= :test/kw (-> :test/kw cc/kw->str cc/str->kw)))
+  (is (= :plain-kw (-> :plain-kw cc/kw->str cc/str->kw)))
+  (is (= :test/kw (cc/str->kw "test/kw"))))
+
 ;; ───────────────────────────────────────────────────────────────── Collections
 (deftest collate-by
   (is (= {:a #{:b :c}, :b #{:d :e}, :c #{nil}}

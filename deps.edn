@@ -1,4 +1,4 @@
 {:paths ["src" "resources"]
  :deps {org.clojure/data.csv {:mvn/version "1.0.1"}
-        org.clojure/test.check {:mvn/version "1.1.1"}} ; dynamically loaded by spec.gen
+        org.clojure/test.check {:mvn/version "1.1.1"} ; dynamically loaded by spec.gen}
  :aliases {:dev {:extra-paths ["dev" "test"]}}}

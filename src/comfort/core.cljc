@@ -33,6 +33,28 @@
                (some->> ~'s (re-matches ~re) next
                  (zipmap ~(mapv keyword parts)))))))
 
+
+(defn no-slashes? [s]
+  (if s (not (str/includes? s "/"))
+      true))
+
+(defn kw->str
+  "Convert possibly-namespaced keyword to string."
+  [k]
+  (when k
+    (assert (keyword? k))
+    (let [ns (namespace k) n (name k)]
+      (assert (no-slashes? ns))
+      (assert (no-slashes? n))
+      (cond->> n ns (str ns \/)))))
+
+(defn str->kw
+  "Convert possibly-'namespaced' string to keyword."
+  [s]
+  (when-not (str/blank? s)
+    (assert (->> s seq (filter #(= \/ %)) count (> 2)))
+    (keyword s)))
+
 ;; ───────────────────────────────────────────────────────────────── Collections
 (defn mapmap
   "Map f over each coll within c." ; TODO transducer version (think about it)
