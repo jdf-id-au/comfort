@@ -6,7 +6,7 @@
 (deftest ngre
   #?(:clj
      (do (cc/defre ln [letters numbers] #"([a-zA-Z]*)([0-9]*)")
-         (is (= #"([a-z][A-Z]*)([0-9]*)" ln))
+         (is (= "([a-zA-Z]*)([0-9]*)" (str ln)))
          (is (= {:letters "abcd" :numbers "0123"}
                (ln-parts "abcd0123"))))))
 
