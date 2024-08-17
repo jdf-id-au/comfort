@@ -15,7 +15,7 @@
   (is (= :plain-kw (-> :plain-kw cc/kw->str cc/str->kw)))
   (is (= :test/kw (cc/str->kw "test/kw"))))
 
-(deftest print
+(deftest printing
   (is (= "┌────┬──────────┬─┐
 │a   │b         │c│
 │more│          │ │

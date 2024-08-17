@@ -103,13 +103,6 @@
              (apply str (concat acc (repeat w B) [BR]))))])
       (map println) dorun)))
 
-(comment ; TODO convert to test
-  (print-table ["a
-moar" "b" "c"] ["d" "e
-
-summoar" "f"])
-  )
-
 (defmacro print-table-with
   "Print table of unevaluated xs then the values of (f x).
   Useful for narrow multiline string values."
