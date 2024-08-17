@@ -28,6 +28,8 @@
 
 (defn painter
   "Example painter method."
+  ;; https://www.oracle.com/java/technologies/painting.html
+  ;; https://docs.oracle.com/javase%2Ftutorial%2F/uiswing/painting/closer.html
   [^JComponent c ^Graphics2D g]
   (.setBackground g Color/YELLOW)
   (.clearRect g 0 0 (/ (.getWidth c) 2) (.getHeight c)))

@@ -15,6 +15,21 @@
   (is (= :plain-kw (-> :plain-kw cc/kw->str cc/str->kw)))
   (is (= :test/kw (cc/str->kw "test/kw"))))
 
+(deftest print
+  (is (= "┌────┬──────────┬─┐
+│a   │b         │c│
+│more│          │ │
+├────┼──────────┼─┤
+│d   │e         │f│
+│    │          │ │
+│    │still more│ │
+└────┴──────────┴─┘
+"
+        (with-out-str (cc/print-table ["a
+more" "b" "c"] ["d" "e
+
+still more" "f"])))))
+
 ;; ───────────────────────────────────────────────────────────────── Collections
 (deftest collate-by
   (is (= {:a #{:b :c}, :b #{:d :e}, :c #{nil}}

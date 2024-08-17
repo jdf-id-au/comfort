@@ -55,6 +55,67 @@
     (assert (->> s seq (filter #(= \/ %)) count (> 2)))
     (keyword s)))
 
+(declare mapmap)
+(defn print-table
+  "Doesn't currently support ragged tables. Better for multiline vals than clojure.pprint/print-table."
+  ;; entirely unoptimised
+  [& rows]
+  {:pre [(apply = (map count rows))]}
+  (let [rcl (mapmap (fnil str/split-lines "") rows) ; nested rows->cols->lines
+        widest-line (fn [lines] (->> lines (map count) (apply max)))
+        widths (apply map ; i.e. all first cols then all second cols
+                 (fn [& cols] (->> cols (map widest-line) (apply max 1)))
+                 rcl)
+        heights (map
+                  (fn [cols] (->> cols (map count) (apply max 1)))
+                  rcl)
+        [TL T TT TR ; top left, top (plain), top tick, top right
+         L LT R RT
+         H V HT
+         BL B BT BR] (seq "┌─┬┐│├│┤─│┼└─┴┘")]
+    (->>
+      (concat
+        [(loop [[w & r] widths
+                acc [TL]]
+           (if r
+             (recur r (concat acc (repeat w T) [TT]))
+             (apply str (concat acc (repeat w T) [TR]))))]
+        (for [[r [h row]] (map-indexed vector (map vector heights rcl))
+              l (range (inc h))
+              :when (not (and (= l h) (= (inc r) (count rcl))))]
+          (str
+            (if (= l h) LT L)
+            (->>
+              (for [[w col] (map vector widths row)
+                    :let [v (if (= l h)
+                              (apply str (repeat w H))
+                              (get col l))
+                          n (count v)]
+                    ]
+                (apply str v (repeat (- w n) \space)))
+              (interpose (if (= l h) HT V))
+              (apply str))
+            (if (= l h) RT R)))
+        [(loop [[w & r] widths
+                acc [BL]]
+           (if r
+             (recur r (concat acc (repeat w B) [BT]))
+             (apply str (concat acc (repeat w B) [BR]))))])
+      (map println) dorun)))
+
+(comment ; TODO convert to test
+  (print-table ["a
+moar" "b" "c"] ["d" "e
+
+summoar" "f"])
+  )
+
+(defmacro print-table-with
+  "Print table of unevaluated xs then the values of (f x).
+  Useful for narrow multiline string values."
+  [f & xs]
+  `(print-table ~(mapv str xs) (map ~f ~(vec xs))))
+
 ;; ───────────────────────────────────────────────────────────────── Collections
 (defn mapmap
   "Map f over each coll within c." ; TODO transducer version (think about it)
