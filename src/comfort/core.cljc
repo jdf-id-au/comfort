@@ -186,6 +186,9 @@
   ([keyfn valfn into-coll]
    (fn [acc x] (update acc (keyfn x) (fnil #(conj % (valfn x)) into-coll)))))
 
+(defn bit-includes? [set val]
+  (not (zero? (bit-and set val))))
+
 (defn group-by-key ; ────────────────────────────────────────────────────── Maps
   "Like `group-by`, but groups map values according to a function of their key."
   [f m]
