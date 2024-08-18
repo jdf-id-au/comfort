@@ -4,8 +4,7 @@
             [clojure.string :as str])
   #?(:cljs (:require-macros [comfort.core :refer [ngre]])))
 
-;; ──────────────────────────────────────────────────────────────────────── Text
-(defn optional-str
+(defn optional-str ; ──────────────────────────── Text and string representation
   "Represent both blank string and nil as nil (and therefore null in database).
    Also trims string input."
   [s] (if (str/blank? s) nil (str/trim s)))
@@ -16,23 +15,23 @@
                         :else (str (subs comment 0 clip) "...")))
   ([comment] (briefly 20 comment)))
 
-#?(:clj (defmacro defre
-          "Named group regular expression: define a function `<name>-parts` calling re-matches which names the found groups using `parts`.
+#?(:clj ; TODO cljs
+   (defmacro defre
+     "Named group regular expression: define a function `<name>-parts` calling re-matches which names the found groups using `parts`.
   Also define a var `<name>` containing `re`."
-          ;; for more sophisticated options, see:
-          ;; https://stackoverflow.com/questions/25892277/clojure-regex-named-groups
-          ;; TODO cljs impl
-          {:clj-kondo/ignore [:unresolved-symbol]}
-          [name parts re]
-          (assert (symbol? name))
-          (assert (vector? parts))
-          (assert (instance? java.util.regex.Pattern re))
-          `(do
-             (def ~name ~re)
-             (defn ~(symbol (str name "-parts")) [~'s]
-               (some->> ~'s (re-matches ~re) next
-                 (zipmap ~(mapv keyword parts)))))))
-
+     ;; for more sophisticated options, see:
+     ;; https://stackoverflow.com/questions/25892277/clojure-regex-named-groups
+     ;; TODO cljs impl
+     {:clj-kondo/ignore [:unresolved-symbol]}
+     [name parts re]
+     (assert (symbol? name))
+     (assert (vector? parts))
+     (assert (instance? java.util.regex.Pattern re))
+     `(do
+        (def ~name ~re)
+        (defn ~(symbol (str name "-parts")) [~'s]
+          (some->> ~'s (re-matches ~re) next
+            (zipmap ~(mapv keyword parts)))))))
 
 (defn no-slashes? [s]
   (if s (not (str/includes? s "/"))
@@ -54,6 +53,22 @@
   (when-not (str/blank? s)
     (assert (->> s seq (filter #(= \/ %)) count (> 2)))
     (keyword s)))
+
+(defn kebab->pascal [s]
+  (let [segs (str/split (str s) #"-")]
+    (->> segs (map str/capitalize) (apply str))))
+
+(defn kebab->snake [s]
+  (str/replace s \- \_))
+
+(defn kebab->screaming-snake [s]
+  (-> s kebab->snake str/upper-case))
+
+#?(:clj ; TODO cljs
+   (defn hex-str
+     "Just show the int as hex. e.g. 16 -> 0x10" ; how to output literal 0x10? custom pretty-printer?
+     [i]
+     (str "0x" (Integer/toUnsignedString (unchecked-int i) 16))))
 
 (declare mapmap)
 (defn print-table
@@ -101,7 +116,9 @@
            (if r
              (recur r (concat acc (repeat w B) [BT]))
              (apply str (concat acc (repeat w B) [BR]))))])
-      (map println) dorun)))
+      (interpose \newline)
+      (apply str)
+      (println))))
 
 (defmacro print-table-with
   "Print table of unevaluated xs then the values of (f x).
@@ -109,8 +126,36 @@
   [f & xs]
   `(print-table ~(mapv str xs) (map ~f ~(vec xs))))
 
-;; ───────────────────────────────────────────────────────────────── Collections
-(defn mapmap
+(defn bracket
+  "Render `coll` of floats as string showing row-major matrix with `cols` columns."
+  [cols & coll]
+  {:pre [(pos? cols) (zero? (mod (count coll) cols))]}
+  (let [[LU RU LM RM LL RL L R] (seq "⎡⎤⎢⎥⎣⎦[]" ; proper brackets
+                                  #_"┌┐││└┘[]") ; box drawing
+        rows (/ (count coll) cols)]
+    (apply str ; more readable than StringWriter
+      (reduce (fn [acc [i v]]
+                (let [v (format "% 5.1f " v)
+                      row (quot i cols)
+                      col (mod i cols)]
+                  (condp = col
+                    0 (conj acc (case rows
+                                 1 L
+                                  (condp = row
+                                    0 LU
+                                    (dec rows) LL
+                                    LM)) v)
+                    (dec cols) (conj acc v (case rows
+                                             1 R
+                                             (condp = row
+                                               0 RU
+                                               (dec rows) RL
+                                               RM)) \newline)
+                    (conj acc v)))
+                )
+        [] (map-indexed vector coll)))))
+
+(defn mapmap ; ───────────────────────────────────────────────────── Collections
   "Map f over each coll within c." ; TODO transducer version (think about it)
   [f c]
   (map #(map f %) c))
@@ -128,8 +173,7 @@
   ([keyfn valfn into-coll]
    (fn [acc x] (update acc (keyfn x) (fnil #(conj % (valfn x)) into-coll)))))
 
-;; ──────────────────────────────────────────────────────────────────────── Maps
-(defn group-by-key
+(defn group-by-key ; ────────────────────────────────────────────────────── Maps
   "Like `group-by`, but groups map values according to a function of their key."
   [f m]
   (persistent!
@@ -184,8 +228,7 @@
   (let [records (map #(apply factory %) values)]
     (apply array-map (interleave (map :id records) records))))
 
-;; ────────────────────────────────────────────────────────────────────── Tables
-(defn column-order
+(defn column-order ; ──────────────────────────────────────────────────── Tables
   [preferred actual]
   (let [specified (set preferred)
         actual (set actual)
@@ -220,8 +263,7 @@
          mapify (fn [row] (apply array-map (interleave fieldnames row)))]
      (map mapify rows))))
 
-;; ────────────────────────────────────────────────────────────────────── Graphs
-(defn hierarchicalise
+(defn hierarchicalise ; ───────────────────────────────────────────────── Graphs
   "Reducer of seq of [key value]
    into []:
    returns order-preserving vector tree hierarchy by key segment
@@ -316,31 +358,30 @@
                     queue)))]
     (distinct queue)))
 
-#?(:clj
-   (defmacro with-resource ; like with-open TODO clj-kondo hooks
-     "bindings => [name init deinit ...]
+(defmacro with-resource ; ────────────────────────────────────────── Pseudo-RAII
+  ;; like with-open TODO clj-kondo hooks
+  "bindings => [name init deinit ...]
 
   Evaluates body in a try expression with names bound to the values
   of the inits, and a finally clause that calls (deinit name) on
   each name in reverse order."
-     {:clj-kondo/ignore [:unresolved-symbol]}
-     [bindings & body]
-     (assert (vector? bindings))
-     (assert (zero? (mod (count bindings) 3)))
-     (cond
-       (= (count bindings) 0) `(do ~@body)
-       (symbol? (bindings 0)) `(let ~(subvec bindings 0 2) 
-                                 (try
-                                   (with-resource ~(subvec bindings 3) ~@body)
-                                   (finally
-                                     (when-let [deinit# ~(bindings 2)]
-                                       (deinit# ~(bindings 0))))))
-       :else (throw (IllegalArgumentException.
-                      "with-resource only allows Symbols in bindings"))))
-   )
+  {:clj-kondo/ignore [:unresolved-symbol]}
+  [bindings & body]
+  (assert (vector? bindings))
+  (assert (zero? (mod (count bindings) 3)))
+  (cond
+    (= (count bindings) 0) `(do ~@body)
+    (symbol? (bindings 0)) `(let ~(subvec bindings 0 2) 
+                              (try
+                                (with-resource ~(subvec bindings 3) ~@body)
+                                (finally
+                                  (when-let [deinit# ~(bindings 2)]
+                                    (deinit# ~(bindings 0))))))
+    :else (throw (ex-info
+                   "with-resource only allows Symbols in bindings"
+                   (apply array-map bindings)))))
 
-;; ───────────────────────────────────────────────────────────────────────── Dev
-(defn debug
+(defn debug ; ────────────────────────────────────────────────────────────── Dev
   "Tap and pass through value, optionally with message and optionally running function on tapped value.
    Use `clojure.core/add-tap` to see values."
   ([pass-through] (debug nil nil pass-through))
@@ -362,3 +403,18 @@
       (intern ns (with-meta sym {:doc doc}) val))
      ([qsym doc val]
       (idef (-> qsym namespace symbol) (-> qsym name symbol) doc val))))
+
+(defn rgba->argb [i] ; ───────────────────────────────────────────── Conversions
+  (let [rgb (bit-and (bit-shift-right i 8) 0xFFFFFF)
+        a (bit-and i 0xFF)]
+    (unchecked-int (+ (bit-shift-left a 24) rgb))))
+
+(defn abgr->argb [i]
+  (let [a (bit-and (bit-shift-right i 24) 0xFF)
+        b (bit-and (bit-shift-right i 16) 0xFF)
+        g (bit-and (bit-shift-right i  8) 0xFF)
+        r (bit-and i 0xFF)]
+    (unchecked-int (+ (bit-shift-left a 24)
+                     (bit-shift-left r 16)
+                     (bit-shift-left g 8)
+                     b))))

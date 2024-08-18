@@ -4,16 +4,12 @@
            (java.lang ProcessHandle)
            (java.io FileNotFoundException)))
 
-;; Libraries
-
-(defn try-resolve
+(defn try-resolve ; ────────────────────────────────────────────────── Libraries
   "Require a ns-qualified symbol if possible (e.g. relevant dep/alias is active), else nil."
   [sym]
   (try (requiring-resolve sym) (catch FileNotFoundException _)))
 
-;; REPL
-
-(defn make-help
+(defn make-help ; ───────────────────────────────────────────────────────── REPL
   "Show selected symbols naming vars from given ns or alias, and their arglists and docstrings.
    Return hostnames, pid and current ns in case user is disoriented!
    Also see `clojure.repl/dir-fn`.
@@ -34,9 +30,7 @@
      :pid (.pid (ProcessHandle/current))
      :ns (ns-name *ns*)}))
 
-;; Profiling
-
-(defn mem-report
+(defn mem-report ; ─────────────────────────────────────────────────── Profiling
   ([] (mem-report :M))
   ([unit]
    (let [units {:K ["KiB" (* 1024.)]
@@ -90,6 +84,7 @@
 (defn print-threads-str [& args]
   (with-out-str (apply print-threads args)))
 
-;; Platform
+(defn current-thread []
+  (.getName (Thread/currentThread)))
 
-(def linux? (= "Linux" (System/getProperty "os.name")))
+(def linux? (= "Linux" (System/getProperty "os.name"))) ; ───────────── Platform

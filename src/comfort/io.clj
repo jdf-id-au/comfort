@@ -13,9 +13,7 @@
            (java.util HexFormat)
            (java.awt.datatransfer DataFlavor StringSelection)))
 
-;; Files - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-(defn get-extension
+(defn get-extension ; ──────────────────────────────────────────────────── Files
   "Return File or filename's extension (lower case)."
   [file]
   (let [fname (if (string? file) file (.getName file))
@@ -70,9 +68,11 @@
     (when (and (.startsWith absolute-child absolute-parent) (.isFile ret))
       ret)))
 
-;; Input - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+(defn temp-file [suffix]
+  (doto (File/createTempFile "render" suffix)
+    (.deleteOnExit)))
 
-(defn drop-bom
+(defn drop-bom ; ───────────────────────────────────────────────────────── Input
   "Remove byte order mark from newly-opened UTF-8 reader."
   ;; Simplified from
   ;; https://commons.apache.org/proper/commons-io///jacoco/org.apache.commons.io.input/BOMInputStream.java.html
@@ -135,9 +135,7 @@
             (do (.write baos (int a))
                 (recur (rest s)))))))
 
-;; Output - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-(defn no-overwrite [path func]
+(defn no-overwrite [path func] ; ──────────────────────────────────────── Output
   (let [file (io/file path)]
     (if (.exists file)
       (throw (ex-info (str "File exists: " path) {:path path}))
@@ -201,9 +199,8 @@
             (.append sb (Integer/toHexString lower)))))
       (str sb)))
 
-;; Clipboard (after https://github.com/exupero/clipboard) - - - - - - - - - - - -
-
-(defn clipboard []
+(defn clipboard [] ; ───────────────────────────────────────────────── Clipboard
+  ;; after https://github.com/exupero/clipboard
   (.getSystemClipboard (java.awt.Toolkit/getDefaultToolkit)))
 
 (defn paste

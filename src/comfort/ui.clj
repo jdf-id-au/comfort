@@ -191,9 +191,7 @@
                  (.dispatchEvent (:frame @f#)
                    (WindowEvent. (:frame @f#) WindowEvent/WINDOW_CLOSING)))))))
 
-;; Graphics API affordances ────────────────────────────────────────────────────
-
-(defmacro with-graphics
+(defmacro with-graphics ; ────────────────────────────────────── API affordances
   "Push a copy of graphics context (must be `g`), do body and pop context."
   [& body]
   `(let [~'g (.create ~'g)] ; deliberately unhygienic!

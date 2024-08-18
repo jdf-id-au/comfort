@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [comfort.core :as cc]))
 
-;; ──────────────────────────────────────────────────────────────────────── Text
-(deftest ngre
+(deftest ngre ; ───────────────────────────────── Text and string representation
   #?(:clj
      (do (cc/defre ln [letters numbers] #"([a-zA-Z]*)([0-9]*)")
          (is (= "([a-zA-Z]*)([0-9]*)" (str ln)))
@@ -30,15 +29,21 @@ more" "b" "c"] ["d" "e
 
 still more" "f"])))))
 
-;; ───────────────────────────────────────────────────────────────── Collections
-(deftest collate-by
+#?(:clj ; TODO cljs
+   (deftest hex-str
+     (is (= (cc/hex-str 0xaabbccdd) "0xaabbccdd"))
+     (is (= (cc/hex-str (cc/rgba->argb 0xaabbccdd)) "0xddaabbcc"))
+     (is (= (cc/hex-str (cc/rgba->argb 0xaabbcc00)) "0xaabbcc"))
+     (is (= (cc/hex-str (cc/rgba->argb 0xaabbccff)) "0xffaabbcc"))
+     (is (= (cc/hex-str (cc/rgba->argb 0xffff95bf)) "0xbfffff95"))))
+
+(deftest collate-by ; ────────────────────────────────────────────── Collections
   (is (= {:a #{:b :c}, :b #{:d :e}, :c #{nil}}
         (reduce (cc/collate-by first second)
           (sorted-map)
           [[:a :b] [:a :c] [:b :d] [:b :e] [:c nil]]))))
 
-;; ────────────────────────────────────────────────────────────────────── Tables
-(deftest column-order
+(deftest column-order ; ───────────────────────────────────────────────── Tables
   (is (= [:a :c :d :e :f :g]
         (cc/column-order
           [:a :B :b :C :c]
@@ -61,8 +66,7 @@ still more" "f"])))))
                         [1 2 3]
                         [4 5 6]]))))
 
-;; ────────────────────────────────────────────────────────────────────── Graphs
-(deftest dag
+(deftest dag ; ────────────────────────────────────────────────────────── Graphs
   (let [nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [3 1] [2 5]]
         acyclic-nodes [[0 1] [1 2] [1 3] [1 4] [2 4] [2 5] [1 6]]
         graph (->> nodes (reduce cc/graph {}))]
