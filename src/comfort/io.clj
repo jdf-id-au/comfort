@@ -5,8 +5,7 @@
             [clojure.pprint :as pprint]
             [comfort.core :as cc])
   (:import (java.io File BufferedReader)
-           (java.nio.file FileSystems Files Path)
-           (java.nio.file.attribute FileAttribute)
+           (java.nio.file FileSystems Path)
            (java.util.zip GZIPInputStream GZIPOutputStream)
            (java.nio.charset StandardCharsets)
            (java.io ByteArrayOutputStream)
@@ -67,10 +66,6 @@
         ret (.toFile absolute-child)]
     (when (and (.startsWith absolute-child absolute-parent) (.isFile ret))
       ret)))
-
-(defn temp-file [suffix]
-  (doto (File/createTempFile "render" suffix)
-    (.deleteOnExit)))
 
 (defn drop-bom ; ───────────────────────────────────────────────────────── Input
   "Remove byte order mark from newly-opened UTF-8 reader."
@@ -178,9 +173,8 @@
 
 (defn temp-file
   "Actually creates the file. Caller to manage deletion."
-  [path prefix suffix]
-  (.toFile (Files/createTempFile (-> path io/file .toPath)
-             prefix suffix (make-array FileAttribute 0))))
+  ([prefix suffix] (File/createTempFile prefix suffix))
+  ([path prefix suffix] (File/createTempFile prefix suffix (-> path io/file .toPath))))
 
 (defn percent-encode ; stunningly absent from jre (URI unhelpful)
   ;; With thanks to http://www.java2s.com/example/java-utility-method/url-encode/uridecode-string-src-3973f.html

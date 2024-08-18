@@ -71,10 +71,9 @@
      (str "0x" (Integer/toUnsignedString (unchecked-int i) 16))))
 
 (declare mapmap)
-(defn print-table
-  "Doesn't currently support ragged tables. Better for multiline vals than clojure.pprint/print-table."
+(defn print-table-impl
   ;; entirely unoptimised
-  [& rows]
+  [borders? & rows]
   {:pre [(apply = (map count rows))]}
   (let [rcl (mapmap (fnil str/split-lines "") rows) ; nested rows->cols->lines
         widest-line (fn [lines] (->> lines (map count) (apply max)))
@@ -87,7 +86,7 @@
         [TL T TT TR ; top left, top (plain), top tick, top right
          L LT R RT
          H V HT
-         BL B BT BR] (seq "┌─┬┐│├│┤─│┼└─┴┘")]
+         BL B BT BR] (seq (if borders? "┌─┬┐│├│┤─│┼└─┴┘" (repeat \space)))]
     (->>
       (concat
         [(loop [[w & r] widths
@@ -120,22 +119,32 @@
       (apply str)
       (println))))
 
+(def print-table  "Doesn't currently support ragged tables. Better for multiline vals than clojure.pprint/print-table."
+  (partial print-table-impl true))
+
+(def print-tabular "Same as print-table but without borders."
+  (partial print-table-impl false))
+
 (defmacro print-table-with
   "Print table of unevaluated xs then the values of (f x).
   Useful for narrow multiline string values."
   [f & xs]
   `(print-table ~(mapv str xs) (map ~f ~(vec xs))))
 
-(defn bracket
-  "Render `coll` of floats as string showing row-major matrix with `cols` columns."
-  [cols & coll]
+(defmacro print-tabular-with
+  "Same as print-table-with but without borders."
+  [f & xs]
+  `(print-tabular ~(mapv str xs) (map ~f ~(vec xs))))
+
+(defn bracket-impl
+  [fmt cols & coll]
   {:pre [(pos? cols) (zero? (mod (count coll) cols))]}
   (let [[LU RU LM RM LL RL L R] (seq "⎡⎤⎢⎥⎣⎦[]" ; proper brackets
                                   #_"┌┐││└┘[]") ; box drawing
         rows (/ (count coll) cols)]
     (apply str ; more readable than StringWriter
       (reduce (fn [acc [i v]]
-                (let [v (format "% 5.1f " v)
+                (let [v (format fmt v)
                       row (quot i cols)
                       col (mod i cols)]
                   (condp = col
@@ -154,6 +163,10 @@
                     (conj acc v)))
                 )
         [] (map-indexed vector coll)))))
+
+(def bracket
+  "Render `coll` of floats as string showing row-major matrix with `cols` columns."
+  (partial bracket-impl "% 5.1f "))
 
 (defn mapmap ; ───────────────────────────────────────────────────── Collections
   "Map f over each coll within c." ; TODO transducer version (think about it)
