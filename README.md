@@ -2,6 +2,8 @@
 
 Collection of tiny things which make life easier in Clojure and ClojureScript. API not guaranteed to be stable; you can choose a specific `sha` to depend on.
 
+Serious folk should look elsewhere, e.g. https://github.com/weavejester/medley , https://github.com/cloojure/tupelo 
+
 ## Usage
 ```edn
 {:deps {jdf/comfort {:git/url "https://github.com/jdf-id-au/comfort.git"
