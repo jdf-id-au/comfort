@@ -9,10 +9,24 @@
          (is (= {:letters "abcd" :numbers "0123"}
                (ln-parts "abcd0123"))))))
 
-(deftest kw
+#_(deftest kw
   (is (= :test/kw (-> :test/kw cc/kw->str cc/str->kw)))
   (is (= :plain-kw (-> :plain-kw cc/kw->str cc/str->kw)))
   (is (= :test/kw (cc/str->kw "test/kw"))))
+
+(deftest kw
+  (are [x y] (= x y)
+    :ns/kw      (cc/str->kw "ns/kw")
+    :plain-kw   (cc/str->kw "plain-kw")
+    nil         (cc/str->kw nil)
+    "plain-kw"  (cc/kw->str :plain-kw)
+    "ns/kw"     (cc/kw->str :ns/kw)
+    nil         (cc/kw->str nil)
+    true        (cc/no-slashes? "hrm.-yep")
+    false       (cc/no-slashes? "nope/y")
+    true        (cc/no-slashes? nil))
+  (is (thrown? AssertionError (cc/str->kw "nopey/nope/nup")))
+  (is (thrown? AssertionError (cc/kw->str "nope"))))
 
 (deftest printing
   (is (= "┌────┬──────────┬─┐
