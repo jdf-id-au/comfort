@@ -19,13 +19,7 @@
              Point Dimension Rectangle
              Color BasicStroke
              Font)
-           (java.awt.event
-             WindowStateListener
-             WindowEvent
-             ComponentListener
-             MouseListener
-             MouseMotionListener
-             MouseWheelListener)
+           (java.awt.event WindowStateListener WindowEvent ComponentListener)
            (java.awt.image BufferedImage)
            (javax.imageio ImageIO)))
 
@@ -116,34 +110,18 @@
 (defn frame
   "Make a frame which draws its panel using `painter`,
   which is stored internally and is updatable using the returned fn."
-  [painter w h add-panel-listeners]
+  [painter w h]
   (let [painter* (atom painter)
         methods* (atom nil)
-        p (cond-> (doto (proxy [JPanel] []
-                          (paint [g]
-                            (proxy-super paintComponent g)
-                            (try ; TODO also time painter to decide about redraw frequency
-                              (@painter* this ^Graphics2D g)
-                              (catch Exception e
-                                (println "Caught exception in painter fn.")
-                                (println e)))))
-                    (.setPreferredSize (Dimension. w h))
-                    ;; Supply these within an add-panel-listeners fn:
-                    #_(.addMouseListener
-                        (reify MouseListener
-                          (mouseClicked [this e])
-                          (mouseEntered [this e])
-                          (mouseExited [this e])
-                          (mousePressed [this e])
-                          (mouseReleased [this e])))
-                    #_(.addMouseMotionListener
-                        (reify MouseMotionListener
-                          (mouseDragged [this e])
-                          (mouseMoved [this e])))
-                    #_(.addMouseWheelListener
-                        (reify MouseWheelListener
-                          (mouseWheelMoved [this e]))))
-            add-panel-listeners (add-panel-listeners))
+        p  (doto (proxy [JPanel] []
+                   (paint [g]
+                     (proxy-super paintComponent g)
+                     (try ; TODO also time painter to decide about redraw frequency
+                       (@painter* this ^Graphics2D g)
+                       (catch Exception e
+                         (println "Caught exception in painter fn.")
+                         (println e)))))
+             (.setPreferredSize (Dimension. w h)))
         f (doto (JFrame.)
             (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE)
             (.add p)
@@ -158,17 +136,16 @@
                     ((:unwatch-painter @methods*))
                     nil))))
             (.addComponentListener
-                (reify ComponentListener
-                  (componentResized [self e]
-                    (.setPreferredSize p
-                      (.getSize (first (.getComponents (.getComponent e))))))
-                  (componentMoved [self e])
-                  (componentShown [self e])
-                  (componentHidden [self e]))))]
-    (doto f
-      (.setLocationRelativeTo nil)
-      (.setVisible true)
-      (.setResizable true))
+              (reify ComponentListener
+                (componentResized [self e]
+                  (.setPreferredSize p
+                    (.getSize (first (.getComponents (.getComponent e))))))
+                (componentMoved [self e])
+                (componentShown [self e])
+                (componentHidden [self e])))
+            (.setLocationRelativeTo nil)
+            (.setVisible true)
+            (.setResizable true))]
     (reset! methods*
       {:reset-painter
        (fn reset-painter [painter]
@@ -182,6 +159,7 @@
                            (.repaint f)
                            (.pack f)))
        :frame f
+       :panel p ; (.addMouseListener p (reify MouseListener ...)) should work
        ;; TODO take size args, maybe flag to match hidpi
        ;; TODO consider headless
        :save (fn [filename]
@@ -192,10 +170,9 @@
 (defmacro repl-frame
   "Make a frame which draws its panel using `painter`, which is a symbol naming
   a var bound to a fn. The frame redraws when the var is rebound."
-  ([painter] `(repl-frame ~painter 800 600 nil))
-  ([painter w h] `(repl-frame ~painter ~w ~h nil))
-  ([painter w h add-panel-listeners]
-   `(let [f# (frame ~painter ~w ~h ~add-panel-listeners)
+  ([painter] `(repl-frame ~painter 800 600))
+  ([painter w h]
+   `(let [f# (frame ~painter ~w ~h)
           k# (keyword (gensym))
           u# (fn ~'unwatch-painter []
                (println "unwatching" #'~painter "on" k#)
