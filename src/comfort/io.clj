@@ -174,7 +174,7 @@
 (defn temp-file
   "Actually creates the file. Caller to manage deletion."
   ([prefix suffix] (File/createTempFile prefix suffix))
-  ([path prefix suffix] (File/createTempFile prefix suffix (-> path io/file .toPath))))
+  ([path prefix suffix] (File/createTempFile prefix suffix (io/file path))))
 
 (defn percent-encode ; stunningly absent from jre (URI unhelpful)
   ;; With thanks to http://www.java2s.com/example/java-utility-method/url-encode/uridecode-string-src-3973f.html

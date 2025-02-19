@@ -1,13 +1,13 @@
 (ns comfort.plot-test
   (:require [clojure.test :refer :all]
-            [comfort.plot :as cp
-             :refer [domain-fn range-fn scale-fn]])
+            [comfort.plot :as cp :refer [domain-fn range-fn scale-fn]]
+            [time-literals.read-write])
   (:refer-clojure :exclude [range]))
 
 #_(do (ns-unmap *ns* 'domain-fn)
       (ns-unmap *ns* 'range-fn)) ; make reload-ns fresh
 
-;; requires com.widdindustries/time-literals, currently too annoying to wrangle deps
+(time-literals.read-write/print-time-literals-clj!)
 
 (deftest scaling
   (is (= 300 (-> 3 ((domain-fn 0 10)) ((range-fn 0 1000)))))
