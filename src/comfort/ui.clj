@@ -1,6 +1,5 @@
 (ns comfort.ui
-  "Simple no-dependency Swing vis infra.
-   No GUI interactivity yet..."
+  "Simple no-dependency Swing vis infra."
   (:require [clojure.java.io :as io]
             [comfort.io :as ci]
             [clojure.test :refer [with-test is]])
@@ -22,6 +21,9 @@
            (java.awt.event WindowStateListener WindowEvent ComponentListener)
            (java.awt.image BufferedImage)
            (javax.imageio ImageIO)))
+
+;; TODO arbitrary datastructure viewer (e.g. for viewing tap> data)
+;; multimethod for rendering in swing, defaults to text
 
 (defn painter
   "Example painter method."
